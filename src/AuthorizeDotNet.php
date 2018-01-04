@@ -213,62 +213,71 @@ class Stripe extends PaymentBase
 
         try {
 
-            //  Set the API key to use
-            $this->setApiKey();
+            if (!empty($oInvoice->customer->billing_email)) {
+                $sReceiptEmail = $oInvoice->customer->billing_email;
+            } else {
+                $sReceiptEmail = $oInvoice->customer->email;
+            }
 
-            //  Get any meta data to pass along to Stripe
-            $aMetaData       = $this->extractMetaData($oInvoice, $oCustomData);
-            $oStripeResponse = Refund::create(
-                [
-                    'charge'   => $sTxnId,
-                    'amount'   => $iAmount,
-                    'metadata' => $aMetaData,
-                    'expand'   => [
-                        'balance_transaction',
-                    ],
-                ]
-            );
+            if (!isset($oCustomData->payment_profile_id)) {
+                throw new \RuntimeException(
+                    'A Payment Profile ID must be supplied.'
+                );
+            }
 
-            $oRefundResponse->setStatusComplete();
-            $oRefundResponse->setTxnId($oStripeResponse->id);
-            $oRefundResponse->setFee($oStripeResponse->balance_transaction->fee * -1);
+            if (!isset($oCustomData->customer_profile_id)) {
+                throw new \RuntimeException(
+                    'The supplied Payment Profile ID cannot be used without an accompanying Customer Profile ID'
+                );
+            }
 
-        } catch (ApiConnection $e) {
+            $oPaymentProfile = new AuthNetAPI\PaymentProfileType();
+            $oPaymentProfile->setPaymentProfileId($oCustomData->payment_profile_id);
 
-            //  Network problem, perhaps try again.
-            $oRefundResponse->setStatusFailed(
-                $e->getMessage(),
-                $e->getCode(),
-                'There was a problem connecting to the gateway, you may wish to try again.'
-            );
+            $oCustomerProfile = new AuthNetAPI\CustomerProfilePaymentType();
+            $oCustomerProfile->setCustomerProfileId($oCustomData->customer_profile_id);
+            $oCustomerProfile->setPaymentProfile($oPaymentProfile);
 
-        } catch (InvalidRequest $e) {
+            $oCharge = AuthNetAPI\TransactionRequestType();
+            $oCharge->setTransactionType('refundTransaction');
+            $oCharge->setRefTransId();
+            $oCharge->setCurrencyCode($sCurrency);
+            $oCharge->setAmount($iAmount / 100);
+            $oCharge->setProfile($oCustomerProfile);
 
-            //  You screwed up in your programming. Shouldn't happen!
-            $oRefundResponse->setStatusFailed(
-                $e->getMessage(),
-                $e->getCode(),
-                'The gateway rejected the request, you may wish to try again.'
-            );
+            $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
+            $oApiRequest->setMerchantAuthentication($this->oAuthentication);
+            $oApiRequest->setTransactionRequest($oCharge);
 
-        } catch (Api $e) {
+            $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
+            $oResponse      = $oApiController->executeWithApiResponse($this->sApiMode);
 
-            //  Stripe's servers are down!
-            $oRefundResponse->setStatusFailed(
-                $e->getMessage(),
-                $e->getCode(),
-                'There was a problem connecting to the gateway, you may wish to try again.'
-            );
+            if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
+
+                $oChargeResponse->setStatusComplete();
+                $oChargeResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
+
+            } else {
+
+                //  @todo: handle errors returned by the Stripe Client/API
+                $oChargeResponse->setStatusFailed(
+                    null,
+                    0,
+                    'The gateway rejected the request, you may wish to try again.'
+                );
+            }
 
         } catch (\Exception $e) {
-            $oRefundResponse->setStatusFailed(
+
+            $oChargeResponse->setStatusFailed(
                 $e->getMessage(),
                 $e->getCode(),
                 'An error occurred while executing the request.'
             );
         }
 
-        return $oRefundResponse;
+        return $oChargeResponse;
+
     }
 
     // --------------------------------------------------------------------------
