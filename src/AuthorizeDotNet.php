@@ -106,18 +106,11 @@ class Stripe extends PaymentBase
 
         try {
 
-            //  Get any meta data to pass along to Stripe
-            $aMetaData = $this->extractMetaData($oInvoice, $oCustomData);
-
             if (!empty($oInvoice->customer->billing_email)) {
                 $sReceiptEmail = $oInvoice->customer->billing_email;
             } else {
                 $sReceiptEmail = $oInvoice->customer->email;
             }
-
-            //  Prep the statement descriptor
-            $sStatementDescriptor = $this->getSetting('sStatementDescriptor');
-            $sStatementDescriptor = str_replace('{{INVOICE_REF}}', $oInvoice->ref, $sStatementDescriptor);
 
             if (!isset($oCustomData->payment_profile_id)) {
                 throw new \RuntimeException(
