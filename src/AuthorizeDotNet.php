@@ -133,6 +133,7 @@ class Stripe extends PaymentBase
 
             $oCharge = AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('authCaptureTransaction');
+            $oCharge->setCurrencyCode($sCurrency);
             $oCharge->setAmount($iAmount / 100);
             $oCharge->setProfile($oCustomerProfile);
 
