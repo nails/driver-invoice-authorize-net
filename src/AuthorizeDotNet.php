@@ -16,20 +16,29 @@ use Nails\Environment;
 use Nails\Factory;
 use Nails\Invoice\Driver\PaymentBase;
 use Nails\Invoice\Exception\DriverException;
-use net\authorize\api\contract\v1 as ADN;
+use net\authorize\api\contract\v1 as AuthNetAPI;
+use net\authorize\api\controller as AuthNetController;
+use \net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 
 class Stripe extends PaymentBase
 {
+    const AUTH_NET_RESPONSE_OK = 'Ok';
+
+    protected $sApiMode;
 	protected $oAuthentication;
-	
-	
+
+
 	public function __construct()
 	{
+        parent::__construct();
+
+        $this->oApiMode = Environment::is('PRODUCTION') ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
+
 		$this->oAuthentication = new ADN\MerchantAuthenticationType();
 	    $this->oAuthentication->setName($this->getSetting('sLoginId'));
 	    $this->oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
 	}
-	
+
     /**
      * Returns whether the driver is available to be used against the selected invoice
      * @return boolean
