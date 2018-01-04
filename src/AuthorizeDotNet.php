@@ -139,7 +139,6 @@ class Stripe extends PaymentBase
 
             $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
             $oApiRequest->setMerchantAuthentication($this->oAuthentication);
-            $oApiRequest->setRefId($oInvoice->ref);
             $oApiRequest->setTransactionRequest($oCharge);
 
             $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
