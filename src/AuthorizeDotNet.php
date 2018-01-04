@@ -106,9 +106,6 @@ class Stripe extends PaymentBase
 
         try {
 
-            //  Set the API key to use
-            $this->setApiKey();
-
             //  Get any meta data to pass along to Stripe
             $aMetaData = $this->extractMetaData($oInvoice, $oCustomData);
 
@@ -122,66 +119,42 @@ class Stripe extends PaymentBase
             $sStatementDescriptor = $this->getSetting('sStatementDescriptor');
             $sStatementDescriptor = str_replace('{{INVOICE_REF}}', $oInvoice->ref, $sStatementDescriptor);
 
-            $aRequestData = [
-                'amount'               => $iAmount,
-                'currency'             => $sCurrency,
-                'description'          => $sDescription,
-                'receipt_email'        => $sReceiptEmail,
-                'metadata'             => $aMetaData,
-                'statement_descriptor' => substr($sStatementDescriptor, 0, 22),
-                'expand'               => [
-                    'balance_transaction',
-                ],
-            ];
-
-            //  Prep the source - if $oCustomData has a `source` property then use that over any supplied card details
-            if (property_exists($oCustomData, 'source_id')) {
-
-                $aRequestData['source'] = $oCustomData->source_id;
-
-                //  The customer ID must also be passed if using a stored payment source; if it's not passed
-                //  explicitly attempt to look it up.
-                if (property_exists($oCustomData, 'customer_id')) {
-                    $aRequestData['customer'] = $oCustomData->customer_id;
-                } else {
-                    $oStripeSourceModel = Factory::model('Source', 'nailsapp/driver-invoice-stripe');
-                    $oSource            = $oStripeSourceModel->getByStripeId($oCustomData->source_id);
-                    if (empty($oSource)) {
-                        throw new \Exception(
-                            'Invalid payment source supplied.'
-                        );
-                    }
-
-                    $oStripeCustomerModel = Factory::model('Customer', 'nailsapp/driver-invoice-stripe');
-                    $oCustomer            = $oStripeCustomerModel->getByCustomerId($oSource->customer_id);
-                    if (empty($oCustomer)) {
-                        throw new \Exception(
-                            'Failed to locate customer ID from payment source ID.'
-                        );
-                    }
-
-                    $aRequestData['customer'] = $oCustomer->stripe_id;
-                }
-
-            } else {
-
-                $aRequestData['source'] = [
-                    'object'    => 'card',
-                    'name'      => $oData->name,
-                    'number'    => $oData->number,
-                    'exp_month' => $oData->exp->month,
-                    'exp_year'  => $oData->exp->year,
-                    'cvc'       => $oData->cvc,
-                ];
+            if (!isset($oCustomData->payment_profile_id)) {
+                throw new \RuntimeException(
+                    'A Payment Profile ID must be supplied.'
+                );
             }
 
-            $oStripeResponse = Charge::create($aRequestData);
+            if (!isset($oCustomData->customer_profile_id)) {
+                throw new \RuntimeException(
+                    'The supplied Payment Profile ID cannot be used without an accompanying Customer Profile ID'
+                );
+            }
 
-            if ($oStripeResponse->paid) {
+            $oPaymentProfile = new AuthNetAPI\PaymentProfileType();
+            $oPaymentProfile->setPaymentProfileId($oCustomData->payment_profile_id);
+
+            $oCustomerProfile = new AuthNetAPI\CustomerProfilePaymentType();
+            $oCustomerProfile->setCustomerProfileId($oCustomData->customer_profile_id);
+            $oCustomerProfile->setPaymentProfile($oPaymentProfile);
+
+            $oCharge = AuthNetAPI\TransactionRequestType();
+            $oCharge->setTransactionType('authCaptureTransaction');
+            $oCharge->setAmount($iAmount / 100);
+            $oCharge->setProfile($oCustomerProfile);
+
+            $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
+            $oApiRequest->setMerchantAuthentication($this->oAuthentication);
+            $oApiRequest->setRefId($oInvoice->ref);
+            $oApiRequest->setTransactionRequest($oCharge);
+
+            $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
+            $oResponse      = $oApiController->executeWithApiResponse($this->sApiMode);
+
+            if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
 
                 $oChargeResponse->setStatusComplete();
-                $oChargeResponse->setTxnId($oStripeResponse->id);
-                $oChargeResponse->setFee($oStripeResponse->balance_transaction->fee);
+                $oChargeResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
 
             } else {
 
@@ -192,45 +165,6 @@ class Stripe extends PaymentBase
                     'The gateway rejected the request, you may wish to try again.'
                 );
             }
-
-        } catch (ApiConnection $e) {
-
-            //  Network problem, perhaps try again.
-            $oChargeResponse->setStatusFailed(
-                $e->getMessage(),
-                $e->getCode(),
-                'There was a problem connecting to the gateway, you may wish to try again.'
-            );
-
-        } catch (InvalidRequest $e) {
-
-            //  You screwed up in your programming. Shouldn't happen!
-            $oChargeResponse->setStatusFailed(
-                $e->getMessage(),
-                $e->getCode(),
-                'The gateway rejected the request, you may wish to try again.'
-            );
-
-        } catch (Api $e) {
-
-            //  Stripe's servers are down!
-            $oChargeResponse->setStatusFailed(
-                $e->getMessage(),
-                $e->getCode(),
-                'There was a problem connecting to the gateway, you may wish to try again.'
-            );
-
-        } catch (Card $e) {
-
-            //  Card was declined. Work out why.
-            $aJsonBody = $e->getJsonBody();
-            $aError    = $aJsonBody['error'];
-
-            $oChargeResponse->setStatusFailed(
-                $e->getMessage(),
-                $e->getCode(),
-                'The payment card was declined. ' . $aError['message']
-            );
 
         } catch (\Exception $e) {
 
