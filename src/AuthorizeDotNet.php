@@ -20,7 +20,7 @@ use net\authorize\api\contract\v1 as AuthNetAPI;
 use net\authorize\api\controller as AuthNetController;
 use \net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 
-class Stripe extends PaymentBase
+class AuthorizeDotNet extends PaymentBase
 {
     const AUTH_NET_RESPONSE_OK = 'Ok';
 
