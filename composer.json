@@ -45,39 +45,22 @@
                         "max_length": 22
                     },
                     {
-                        "legend": "Test API Keys",
+                        "legend": "API Keys",
                         "fields": [
                             {
-                                "key": "sKeyTestSecret",
-                                "label": "Secret Key",
+                                "key": "sLoginId",
+                                "label": "Log-In ID",
                                 "type": "password",
                                 "encrypted": true
                             },
                             {
-                                "key": "sKeyTestPublic",
-                                "label": "Public Key",
+                                "key": "sTransactionKey",
+                                "label": "Transaction Key",
                                 "type": "password",
                                 "encrypted": true
                             }
                         ]
                     },
-                    {
-                        "legend": "Live API Keys",
-                        "fields": [
-                            {
-                                "key": "sKeyLiveSecret",
-                                "label": "Secret Key",
-                                "type": "password",
-                                "encrypted": true
-                            },
-                            {
-                                "key": "sKeyLivePublic",
-                                "label": "Public Key",
-                                "type": "password",
-                                "encrypted": true
-                            }
-                        ]
-                    }
                 ]
             }
         }
