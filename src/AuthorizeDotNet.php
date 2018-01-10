@@ -25,29 +25,29 @@ class AuthorizeDotNet extends PaymentBase
     const AUTH_NET_RESPONSE_OK = 'Ok';
 
     protected $sApiMode;
-	protected $oAuthentication;
+    protected $oAuthentication;
 
 
-	public function __construct()
-	{
+    public function __construct()
+    {
         parent::__construct();
 
         $this->sApiMode = Environment::is('PRODUCTION') ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
 
-		$this->oAuthentication = new AuthNetAPI\MerchantAuthenticationType();
-	    $this->oAuthentication->setName($this->getSetting('sLoginId'));
-	    $this->oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
-	}
+        $this->oAuthentication = new AuthNetAPI\MerchantAuthenticationType();
+        $this->oAuthentication->setName($this->getSetting('sLoginId'));
+        $this->oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
+    }
 
-	public function getApiMode()
-	{
-    	return $this->sApiMode;
-	}
+    public function getApiMode()
+    {
+        return $this->sApiMode;
+    }
 
-	public function getAuthentication()
-	{
-    	return clone $this->oAuthentication;
-	}
+    public function getAuthentication()
+    {
+        return clone $this->oAuthentication;
+    }
 
     /**
      * Returns whether the driver is available to be used against the selected invoice
