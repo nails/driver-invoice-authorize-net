@@ -10,7 +10,7 @@
  * @link
  */
 
-namespace Nails\Invoice\Driver\Payment;
+namespace Nails\Invoice\Driver;
 
 use Nails\Environment;
 use Nails\Factory;
