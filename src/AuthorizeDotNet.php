@@ -34,7 +34,7 @@ class AuthorizeDotNet extends PaymentBase
 
         $this->sApiMode = Environment::is('PRODUCTION') ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
 
-		$this->oAuthentication = new ADN\MerchantAuthenticationType();
+		$this->oAuthentication = new API\MerchantAuthenticationType();
 	    $this->oAuthentication->setName($this->getSetting('sLoginId'));
 	    $this->oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
 	}
