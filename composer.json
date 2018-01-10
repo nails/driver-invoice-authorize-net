@@ -4,6 +4,15 @@
     "homepage": "http://nailsapp.co.uk/modules/invoice/driver/authorize-net",
     "description": "This is the \"Authorize.net\" driver for the Nails Invoice module.",
     "license": "MIT",
+    "authors":
+    [
+        {
+            "name": "Pablo de la Pena",
+            "email": "p@nailsapp.co.uk",
+            "homepage": "http://nailsapp.co.uk",
+            "role": "Developer"
+        }
+    ],
     "support":
     {
         "email": "hello@nailsapp.co.uk"
