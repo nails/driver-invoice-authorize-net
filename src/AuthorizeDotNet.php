@@ -195,9 +195,15 @@ class AuthorizeDotNet extends PaymentBase
 
     /**
      * Complete the payment
+     *
+     * @param  \stdClass $oPayment  The Payment object
+     * @param  \stdClass $oInvoice  The Invoice object
+     * @param  array     $aGetVars  Any $_GET variables passed from the redirect flow
+     * @param  array     $aPostVars Any $_POST variables passed from the redirect flow
+     *
      * @return \Nails\Invoice\Model\CompleteResponse
      */
-    public function complete()
+    public function complete($oPayment, $oInvoice, $aGetVars, $aPostVars)
     {
         $oCompleteResponse = Factory::factory('CompleteResponse', 'nailsapp/module-invoice');
         $oCompleteResponse->setStatusComplete();
@@ -274,13 +280,13 @@ class AuthorizeDotNet extends PaymentBase
 
             if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
 
-                $oChargeResponse->setStatusComplete();
-                $oChargeResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
+                $oRefundResponse->setStatusComplete();
+                $oRefundResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
 
             } else {
 
                 //  @todo: handle errors returned by the Stripe Client/API
-                $oChargeResponse->setStatusFailed(
+                $oRefundResponse->setStatusFailed(
                     null,
                     0,
                     'The gateway rejected the request, you may wish to try again.'
@@ -289,13 +295,13 @@ class AuthorizeDotNet extends PaymentBase
 
         } catch (\Exception $e) {
 
-            $oChargeResponse->setStatusFailed(
+            $oRefundResponse->setStatusFailed(
                 $e->getMessage(),
                 $e->getCode(),
                 'An error occurred while executing the request.'
             );
         }
 
-        return $oChargeResponse;
+        return $oRefundResponse;
     }
 }
