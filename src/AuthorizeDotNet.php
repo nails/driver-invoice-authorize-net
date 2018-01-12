@@ -14,20 +14,24 @@ namespace Nails\Invoice\Driver;
 
 use Nails\Environment;
 use Nails\Factory;
-use Nails\Invoice\Driver\PaymentBase;
-use Nails\Invoice\Exception\DriverException;
+use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 use net\authorize\api\contract\v1 as AuthNetAPI;
 use net\authorize\api\controller as AuthNetController;
-use \net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 
 class AuthorizeDotNet extends PaymentBase
 {
     const AUTH_NET_RESPONSE_OK = 'Ok';
 
+    // --------------------------------------------------------------------------
+
     protected $sApiMode;
     protected $oAuthentication;
 
+    // --------------------------------------------------------------------------
 
+    /**
+     * AuthorizeDotNet constructor.
+     */
     public function __construct()
     {
         parent::__construct();
@@ -39,21 +43,27 @@ class AuthorizeDotNet extends PaymentBase
         $this->oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
     }
 
+    // --------------------------------------------------------------------------
+
     public function getApiMode()
     {
         return $this->sApiMode;
     }
+
+    // --------------------------------------------------------------------------
 
     public function getAuthentication()
     {
         return clone $this->oAuthentication;
     }
 
+    // --------------------------------------------------------------------------
+
     /**
      * Returns whether the driver is available to be used against the selected invoice
      * @return boolean
      */
-    public function isAvailable()
+    public function isAvailable($oInvoice)
     {
         return true;
     }
