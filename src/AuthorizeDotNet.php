@@ -179,9 +179,13 @@ class AuthorizeDotNet extends PaymentBase
 
             } else {
 
-                //  @todo: handle errors returned by the Stripe Client/API
                 $oChargeResponse->setStatusFailed(
-                    null,
+                    implode("\n\t-", array_map(
+                        function ($oMessage) {
+                            return $oMessage->getCode() . ': ' . $oMessage->getText() . "\n";
+                        },
+                        $oResponse->getMessages()->getMessage()
+                    )),
                     0,
                     'The gateway rejected the request, you may wish to try again.'
                 );
