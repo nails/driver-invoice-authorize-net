@@ -165,7 +165,7 @@ class AuthorizeDotNet extends PaymentBase
             $oCustomerProfile->setCustomerProfileId($oCustomData->customer_profile_id);
             $oCustomerProfile->setPaymentProfile($oPaymentProfile);
 
-            $oCharge = AuthNetAPI\TransactionRequestType();
+            $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('authCaptureTransaction');
             $oCharge->setCurrencyCode($sCurrency);
             $oCharge->setAmount($iAmount / 100);
@@ -278,7 +278,7 @@ class AuthorizeDotNet extends PaymentBase
             $oCustomerProfile->setCustomerProfileId($oCustomData->customer_profile_id);
             $oCustomerProfile->setPaymentProfile($oPaymentProfile);
 
-            $oCharge = AuthNetAPI\TransactionRequestType();
+            $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('refundTransaction');
             $oCharge->setRefTransId();
             $oCharge->setCurrencyCode($sCurrency);
