@@ -140,12 +140,6 @@ class AuthorizeDotNet extends PaymentBase
 
         try {
 
-            if (!empty($oInvoice->customer->billing_email)) {
-                $sReceiptEmail = $oInvoice->customer->billing_email;
-            } else {
-                $sReceiptEmail = $oInvoice->customer->email;
-            }
-
             if (!isset($oCustomData->payment_profile_id)) {
                 throw new \RuntimeException(
                     'A Payment Profile ID must be supplied.'
@@ -252,12 +246,6 @@ class AuthorizeDotNet extends PaymentBase
         $oRefundResponse = Factory::factory('RefundResponse', 'nailsapp/module-invoice');
 
         try {
-
-            if (!empty($oInvoice->customer->billing_email)) {
-                $sReceiptEmail = $oInvoice->customer->billing_email;
-            } else {
-                $sReceiptEmail = $oInvoice->customer->email;
-            }
 
             if (!isset($oCustomData->payment_profile_id)) {
                 throw new \RuntimeException(
