@@ -10,8 +10,9 @@
  * @link
  */
 
-namespace Nails\Invoice\Driver;
+namespace Nails\Invoice\Driver\Payment;
 
+use Nails\Invoice\Driver\PaymentBase;
 use Nails\Environment;
 use Nails\Factory;
 use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
