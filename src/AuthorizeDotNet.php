@@ -45,6 +45,13 @@ class AuthorizeDotNet extends PaymentBase
 
     // --------------------------------------------------------------------------
 
+
+    /**
+     * Returns the mode to be used when running an Authorize.Net SDK controller.
+     *
+     * @access public
+     * @return string
+     */
     public function getApiMode()
     {
         return $this->sApiMode;
@@ -52,6 +59,13 @@ class AuthorizeDotNet extends PaymentBase
 
     // --------------------------------------------------------------------------
 
+
+    /**
+     * Returns a pre-configured authentication object to be used with Authorize.Net SDK requests.
+     *
+     * @access public
+     * @return net\authorize\api\contract\v1\MerchantAuthenticationType
+     */
     public function getAuthentication()
     {
         return clone $this->oAuthentication;
