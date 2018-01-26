@@ -1,0 +1,77 @@
+{
+    "name": "nailsapp/driver-invoice-authorize-net",
+    "keywords": ["Nails", "Shed Collective", "CodeIgniter", "Invoice Module", "Payments", "Driver", "Authorize.net"],
+    "homepage": "http://nailsapp.co.uk/modules/invoice/driver/authorize-net",
+    "description": "This is the \"Authorize.net\" driver for the Nails Invoice module.",
+    "license": "MIT",
+    "authors":
+    [
+        {
+            "name": "Pablo de la Pena",
+            "email": "p@nailsapp.co.uk",
+            "homepage": "http://nailsapp.co.uk",
+            "role": "Developer"
+        }
+    ],
+    "support":
+    {
+        "email": "hello@nailsapp.co.uk"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require":
+    {
+        "nailsapp/module-invoice": "dev-develop",
+        "authorizenet/authorizenet": "~1.9"
+    },
+    "autoload":
+    {
+        "psr-4": {"Nails\\Invoice\\Driver\\": "src/"}
+    },
+    "extra":
+    {
+        "nails" :
+        {
+            "name": "Authorize.net",
+            "type": "driver",
+            "subType": "payment",
+            "forModule": "nailsapp/module-invoice",
+            "data": {
+                "namespace": "Nails\\Invoice\\Driver\\Payment\\",
+                "class": "AuthorizeDotNet",
+                "settings": [
+                    {
+                        "key": "sLabel",
+                        "label": "Label",
+                        "info": "The name of the provider, as seen by customers.",
+                        "default": "Authorize.net"
+                    },
+                    {
+                        "key": "sStatementDescriptor",
+                        "label": "Statement Descriptor",
+                        "info": "The text shown on the customer's statement. You can sub in {{INVOICE_REF}} for the invoice reference.",
+                        "default": "INV #{{INVOICE_REF}}",
+                        "max_length": 22
+                    },
+                    {
+                        "legend": "API Keys",
+                        "fields": [
+                            {
+                                "key": "sLoginId",
+                                "label": "Log-In ID",
+                                "type": "password",
+                                "encrypted": true
+                            },
+                            {
+                                "key": "sTransactionKey",
+                                "label": "Transaction Key",
+                                "type": "password",
+                                "encrypted": true
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+}
