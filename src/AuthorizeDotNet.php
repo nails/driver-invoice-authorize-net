@@ -12,9 +12,10 @@
 
 namespace Nails\Invoice\Driver\Payment;
 
-use Nails\Invoice\Driver\PaymentBase;
 use Nails\Environment;
 use Nails\Factory;
+use Nails\Invoice\Driver\PaymentBase;
+use Nails\Invoice\Exception\DriverException;
 use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 use net\authorize\api\contract\v1 as AuthNetAPI;
 use net\authorize\api\controller as AuthNetController;
@@ -25,7 +26,16 @@ class AuthorizeDotNet extends PaymentBase
 
     // --------------------------------------------------------------------------
 
+    /**
+     * The mode the API should be run in
+     * @var string
+     */
     protected $sApiMode;
+
+    /**
+     * The Authorize.Net Authentication object
+     * @var AuthNetAPI\MerchantAuthenticationType
+     */
     protected $oAuthentication;
 
     // --------------------------------------------------------------------------
@@ -42,34 +52,6 @@ class AuthorizeDotNet extends PaymentBase
         $this->oAuthentication = new AuthNetAPI\MerchantAuthenticationType();
         $this->oAuthentication->setName($this->getSetting('sLoginId'));
         $this->oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
-    }
-
-    // --------------------------------------------------------------------------
-
-
-    /**
-     * Returns the mode to be used when running an Authorize.Net SDK controller.
-     *
-     * @access public
-     * @return string
-     */
-    public function getApiMode()
-    {
-        return $this->sApiMode;
-    }
-
-    // --------------------------------------------------------------------------
-
-
-    /**
-     * Returns a pre-configured authentication object to be used with Authorize.Net SDK requests.
-     *
-     * @access public
-     * @return net\authorize\api\contract\v1\MerchantAuthenticationType
-     */
-    public function getAuthentication()
-    {
-        return clone $this->oAuthentication;
     }
 
     // --------------------------------------------------------------------------
@@ -97,13 +79,13 @@ class AuthorizeDotNet extends PaymentBase
     // --------------------------------------------------------------------------
 
     /**
-     * Returns the payment fields the driver requires, use CARD for basic credit
+     * Returns the payment fields the driver requires, use static::PAYMENT_FIELDS_CARD for basic credit
      * card details.
      * @return mixed
      */
     public function getPaymentFields()
     {
-        return 'CARD';
+        return static::PAYMENT_FIELDS_CARD;
     }
 
     // --------------------------------------------------------------------------
@@ -141,24 +123,33 @@ class AuthorizeDotNet extends PaymentBase
 
         try {
 
-            if (!isset($oCustomData->payment_profile_id)) {
-                throw new \RuntimeException(
-                    'A Payment Profile ID must be supplied.'
-                );
+            /**
+             * If a payment_profile_id or customer_profile_id has been supplied then use these over
+             * any supplied card details.
+             */
+
+            $sPaymentProfileId  = property_exists($oCustomData, 'payment_profile_id') ? $oCustomData->payment_profile_id : null;
+            $sCustomerProfileId = property_exists($oCustomData, 'customer_profile_id') ? $oCustomData->customer_profile_id : null;
+
+            if ($sPaymentProfileId || $sCustomerProfileId) {
+                if (empty($oCustomData->payment_profile_id)) {
+                    throw new DriverException('A Payment Profile ID must be supplied.');
+                } elseif (empty($oCustomData->customer_profile_id)) {
+                    throw new DriverException('A Customer Profile ID must be supplied.');
+                }
+
+                $oPaymentProfile = new AuthNetAPI\PaymentProfileType();
+                $oPaymentProfile->setPaymentProfileId($oCustomData->payment_profile_id);
+
+                $oCustomerProfile = new AuthNetAPI\CustomerProfilePaymentType();
+                $oCustomerProfile->setCustomerProfileId($oCustomData->customer_profile_id);
+                $oCustomerProfile->setPaymentProfile($oPaymentProfile);
+
+            } else {
+
             }
 
-            if (!isset($oCustomData->customer_profile_id)) {
-                throw new \RuntimeException(
-                    'The supplied Payment Profile ID cannot be used without an accompanying Customer Profile ID'
-                );
-            }
-
-            $oPaymentProfile = new AuthNetAPI\PaymentProfileType();
-            $oPaymentProfile->setPaymentProfileId($oCustomData->payment_profile_id);
-
-            $oCustomerProfile = new AuthNetAPI\CustomerProfilePaymentType();
-            $oCustomerProfile->setCustomerProfileId($oCustomData->customer_profile_id);
-            $oCustomerProfile->setPaymentProfile($oPaymentProfile);
+            dumpanddie($oData, $oCustomData);
 
             $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('authCaptureTransaction');
@@ -238,30 +229,18 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return \Nails\Invoice\Model\RefundResponse
      */
-    public function refund(
-        $sTxnId,
-        $iAmount,
-        $sCurrency,
-        $oCustomData,
-        $sReason,
-        $oPayment,
-        $oInvoice
-    ) {
-
+    public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice)
+    {
         $oRefundResponse = Factory::factory('RefundResponse', 'nailsapp/module-invoice');
 
         try {
 
             if (!isset($oCustomData->payment_profile_id)) {
-                throw new \RuntimeException(
-                    'A Payment Profile ID must be supplied.'
-                );
+                throw new DriverException('A Payment Profile ID must be supplied.');
             }
 
             if (!isset($oCustomData->customer_profile_id)) {
-                throw new \RuntimeException(
-                    'The supplied Payment Profile ID cannot be used without an accompanying Customer Profile ID'
-                );
+                throw new DriverException('The supplied Payment Profile ID cannot be used without an accompanying Customer Profile ID');
             }
 
             $oPaymentProfile = new AuthNetAPI\PaymentProfileType();
@@ -310,5 +289,118 @@ class AuthorizeDotNet extends PaymentBase
         }
 
         return $oRefundResponse;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Returns the mode to be used when running an Authorize.Net SDK controller.
+     * @return string
+     */
+    public function getApiMode()
+    {
+        return $this->sApiMode;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Returns a pre-configured authentication object to be used with Authorize.Net SDK requests.
+     * @return \net\authorize\api\contract\v1\MerchantAuthenticationType
+     */
+    public function getAuthentication()
+    {
+        return clone $this->oAuthentication;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Adds a payment source to a customer
+     *
+     * @param  $iCustomerId  integer      The customer ID to associate the payment source with
+     * @param  $mSourceData  string|array The payment source data to pass to Stripe; a token or an associative array
+     * @param  $sSourceLabel string       The label (or nickname) to give the card
+     *
+     * @return \stdClass                  The source object
+     * @throws DriverException
+     */
+    public function addPaymentSource($iCustomerId, $mSourceData, $sSourceLabel = '')
+    {
+        //  @todo (Pablo - 2018-01-29) - Create source with Authorize.Net
+
+        $oAuthNetSourceModel = Factory::model('Source', 'nailsapp/driver-invoice-authorize-net');
+        $oSource             = $oAuthNetSourceModel->create(
+            [
+                'label'       => $sSourceLabel ?: $oSource->brand . ' card ending in ' . $oSource->last4,
+                'customer_id' => $iCustomerId,
+                'stripe_id'   => $oSource->id,
+                'last4'       => $oSource->last4,
+                'brand'       => $oSource->brand,
+                'exp_month'   => $oSource->exp_month,
+                'exp_year'    => $oSource->exp_year,
+                'name'        => $oSource->name,
+            ],
+            true
+        );
+
+        if (!$oSource) {
+            throw new DriverException(
+                'Failed to save payment source. ' . $oAuthNetSourceModel->lastError()
+            );
+        }
+
+        return $oSource;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Deletes a customer payment source
+     *
+     * @param integer $iCustomerId The customer ID to associate the payment source with
+     * @param integer $iSourceId   The payment source ID
+     *
+     * @return bool
+     * @throws DriverException
+     */
+    public function removePaymentSource($iCustomerId, $iSourceId)
+    {
+        $oAuthNetSourceModel = Factory::model('Source', 'nailsapp/driver-invoice-authorize-net');
+        $aSources            = $oAuthNetSourceModel->getAll([
+            'where' => [
+                ['id', $iSourceId],
+                ['customer_id', $iCustomerId],
+            ],
+        ]);
+
+        if (count($aSources) !== 1) {
+            throw new DriverException('Not a valid payment source for customer #' . $iCustomerId);
+        }
+
+        $oSource = reset($aSources);
+
+        //  @todo (Pablo - 2018-01-29) - Delete from Authorze.Net
+
+        return $oAuthNetSourceModel->delete($oSource->id);
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Returns an array of Authorize.Net payment sources for a particular customer ID
+     *
+     * @param $iCustomerId integer The customer ID to retrieve for
+     *
+     * @return array
+     */
+    public function getPaymentSources($iCustomerId)
+    {
+        $oAuthNetSourceModel = Factory::model('Source', 'nailsapp/driver-invoice-authorize-net');
+        return $oAuthNetSourceModel->getAll([
+            'where' => [
+                ['customer_id', $iCustomerId],
+            ],
+        ]);
     }
 }
