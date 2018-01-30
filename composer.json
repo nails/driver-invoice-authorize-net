@@ -76,13 +76,16 @@
                             {
                                 "key": "iPerTransactionFee",
                                 "label": "Per Transaction Fee",
-                                "type": "number"
+                                "type": "number",
+                                "default": 0,
+                                "info": "The fixed component of the fee (in the smallest unit of the currency)"
                             },
                             {
-                                "key": "iPerTransactionPercentage",
+                                "key": "fPerTransactionPercentage",
                                 "label": "Per Transaction Fee",
                                 "type": "number",
-                                "default": 0
+                                "default": 0,
+                                "info": "The percentage component of the fee (0-100)"
                             }
                         ]
                     }

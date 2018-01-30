@@ -124,6 +124,7 @@ class AuthorizeDotNet extends PaymentBase
 
             $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
             $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+            $oApiRequest->setRefId($oPayment->id);
             $oApiRequest->setTransactionRequest($oCharge);
 
             $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
@@ -133,7 +134,7 @@ class AuthorizeDotNet extends PaymentBase
 
                 $oChargeResponse->setStatusComplete();
                 $oChargeResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
-                //  @todo (Pablo - 2018-01-30) - calculate and set the fee charged
+                $oChargeResponse->setFee($this->calculateFee($iAmount));
 
             } else {
 
@@ -343,5 +344,21 @@ class AuthorizeDotNet extends PaymentBase
         $oPayment->setCreditCard($oCreditCard);
 
         $oCharge->setPayment($oPayment);
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Calculates the transaction fee
+     *
+     * @param integer $iAmount The value of the transaction
+     *
+     * @return int
+     */
+    protected function calculateFee($iAmount)
+    {
+        $iFixedFee      = (int) $this->getSetting('iPerTransactionFee');
+        $fPercentageFee = (float) $this->getSetting('iPerTransactionPercentage');
+        return $iFixedFee + ($fPercentageFee / 100) * $iAmount;
     }
 }
