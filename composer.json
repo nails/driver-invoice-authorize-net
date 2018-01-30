@@ -69,6 +69,22 @@
                                 "encrypted": true
                             }
                         ]
+                    },
+                    {
+                        "legend": "Fees",
+                        "fields": [
+                            {
+                                "key": "iPerTransactionFee",
+                                "label": "Per Transaction Fee",
+                                "type": "number"
+                            },
+                            {
+                                "key": "iPerTransactionPercentage",
+                                "label": "Per Transaction Fee",
+                                "type": "number",
+                                "default": 0
+                            }
+                        ]
                     }
                 ]
             }
