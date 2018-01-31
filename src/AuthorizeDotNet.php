@@ -271,7 +271,7 @@ class AuthorizeDotNet extends PaymentBase
      * Returns the mode to be used when running an Authorize.Net SDK controller.
      * @return string
      */
-    protected function getApiMode()
+    public function getApiMode()
     {
         return Environment::is('PRODUCTION') ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
     }
@@ -282,7 +282,7 @@ class AuthorizeDotNet extends PaymentBase
      * Returns an Authorize.Net authentication object
      * @return AuthNetAPI\MerchantAuthenticationType
      */
-    protected function getAuthentication()
+    public function getAuthentication()
     {
         $oAuthentication = new AuthNetAPI\MerchantAuthenticationType();
         $oAuthentication->setName($this->getSetting('sLoginId'));
