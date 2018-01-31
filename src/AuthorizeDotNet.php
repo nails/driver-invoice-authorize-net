@@ -138,11 +138,16 @@ class AuthorizeDotNet extends PaymentBase
 
             } else {
 
-                $oGeneralError  = reset($oResponse->getMessages()->getMessage());
-                $oSpecificError = reset($oResponse->getTransactionResponse()->getErrors());
+                $oGeneralError = reset($oResponse->getMessages()->getMessage());
+                if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
+                    $oError         = reset($oResponse->getTransactionResponse()->getErrors());
+                    $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
+                } else {
+                    $sSpecificError = '';
+                }
 
                 $oChargeResponse->setStatusFailed(
-                    $oGeneralError->getText() . '(' . $oSpecificError->getErrorCode() . ': ' . $oSpecificError->getErrorText() . ')',
+                    $oGeneralError->getText() . $sSpecificError,
                     $oGeneralError->getCode(),
                     'The gateway rejected the request, you may wish to try again.'
                 );
@@ -195,35 +200,31 @@ class AuthorizeDotNet extends PaymentBase
      */
     public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice)
     {
-        dumpanddie('@todo');
         $oRefundResponse = Factory::factory('RefundResponse', 'nailsapp/module-invoice');
 
         try {
 
-            if (!isset($oCustomData->payment_profile_id)) {
-                throw new DriverException('A Payment Profile ID must be supplied.');
-            }
+            //  Get the transaction details
+            $oTransactionDetails = $this->getTransactionDetails($sTxnId);
 
-            if (!isset($oCustomData->customer_profile_id)) {
-                throw new DriverException('The supplied Payment Profile ID cannot be used without an accompanying Customer Profile ID');
-            }
-
-            $oPaymentProfile = new AuthNetAPI\PaymentProfileType();
-            $oPaymentProfile->setPaymentProfileId($oCustomData->payment_profile_id);
-
-            $oCustomerProfile = new AuthNetAPI\CustomerProfilePaymentType();
-            $oCustomerProfile->setCustomerProfileId($oCustomData->customer_profile_id);
-            $oCustomerProfile->setPaymentProfile($oPaymentProfile);
+            // Create the payment data for a credit card
+            $oCard = new AuthNetAPI\CreditCardType();
+            $oCard->setCardNumber($oTransactionDetails->card->last4);
+            $oCard->setExpirationDate('XXXX'); //  This is deliberate
+            $oPayment = new AuthNetAPI\PaymentType();
+            $oPayment->setCreditCard($oCard);
 
             $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('refundTransaction');
-            $oCharge->setRefTransId();
+            $oCharge->setRefTransId($sTxnId);
             $oCharge->setCurrencyCode($sCurrency);
             $oCharge->setAmount($iAmount / 100);
-            $oCharge->setProfile($oCustomerProfile);
+            $oCharge->setPayment($oPayment);
 
             $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
             $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+            //  @todo (Pablo - 2018-01-31) - set this to the ID fo the refund object
+            //  $oApiRequest->setRefId(null);
             $oApiRequest->setTransactionRequest($oCharge);
 
             $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
@@ -233,19 +234,27 @@ class AuthorizeDotNet extends PaymentBase
 
                 $oRefundResponse->setStatusComplete();
                 $oRefundResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
+                //  @todo (Pablo - 2018-01-31) - Calculate refunded fee
+                //  $oRefundResponse->setFee($oStripeResponse->balance_transaction->fee * -1);
 
             } else {
 
-                //  @todo: handle errors returned by the Stripe Client/API
+                $oGeneralError = reset($oResponse->getMessages()->getMessage());
+                if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
+                    $oError         = reset($oResponse->getTransactionResponse()->getErrors());
+                    $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
+                } else {
+                    $sSpecificError = '';
+                }
+
                 $oRefundResponse->setStatusFailed(
-                    null,
-                    0,
+                    $oGeneralError->getText() . $sSpecificError,
+                    $oGeneralError->getCode(),
                     'The gateway rejected the request, you may wish to try again.'
                 );
             }
 
         } catch (\Exception $e) {
-
             $oRefundResponse->setStatusFailed(
                 $e->getMessage(),
                 $e->getCode(),
@@ -325,6 +334,8 @@ class AuthorizeDotNet extends PaymentBase
      */
     protected function payUsingCardDetails($oCharge, $sCardNumber, $iCardExpireMonth, $iCardExpireYear, $sCardCvc)
     {
+        $sCardNumber = preg_replace('/[^\d]/', '', $sCardNumber);
+
         if (empty($sCardNumber)) {
             throw new DriverException('Card number must be supplied.');
         } elseif (empty($iCardExpireMonth)) {
@@ -360,5 +371,44 @@ class AuthorizeDotNet extends PaymentBase
         $iFixedFee      = (int) $this->getSetting('iPerTransactionFee');
         $fPercentageFee = (float) $this->getSetting('iPerTransactionPercentage');
         return $iFixedFee + ($fPercentageFee / 100) * $iAmount;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Queries Authorize.Net for details about a transaction
+     *
+     * @param string $sTxnId The original transaction ID
+     *
+     * @throws DriverException
+     * @return \stdClass
+     */
+    protected function getTransactionDetails($sTxnId)
+    {
+        $oApiRequest = new AuthNetAPI\GetTransactionDetailsRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setTransId($sTxnId);
+
+        $oApiController = new AuthNetController\GetTransactionDetailsController($oApiRequest);
+        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
+
+            $oTransaction = $oResponse->getTransaction();
+            $oPayment     = $oTransaction->getPayment();
+            $oCard        = $oPayment->getCreditCard();
+
+            return (object) [
+                'id'     => $oTransaction->getTransId(),
+                'status' => $oTransaction->getTransactionStatus(),
+                'card'   => (object) [
+                    'last4' => substr($oCard->getCardNumber(), -4),
+                ],
+            ];
+
+        } else {
+            $oGeneralError = reset($oResponse->getMessages()->getMessage());
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
     }
 }
