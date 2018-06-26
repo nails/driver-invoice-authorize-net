@@ -67,6 +67,12 @@
                                 "label": "Transaction Key",
                                 "type": "password",
                                 "encrypted": true
+                            },
+                            {
+                                "key": "sSignatureKey",
+                                "label": "Signature Key",
+                                "type": "password",
+                                "encrypted": true
                             }
                         ]
                     },
