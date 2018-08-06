@@ -138,9 +138,11 @@ class AuthorizeDotNet extends PaymentBase
 
             } else {
 
-                $oGeneralError = reset($oResponse->getMessages()->getMessage());
+                $aGeneralErrors = $oResponse->getMessages()->getMessage();
+                $oGeneralError  = reset($aGeneralErrors);
                 if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
-                    $oError         = reset($oResponse->getTransactionResponse()->getErrors());
+                    $aErrors        = $oResponse->getTransactionResponse()->getErrors();
+                    $oError         = reset($aErrors);
                     $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
                 } else {
                     $sSpecificError = '';
@@ -239,9 +241,11 @@ class AuthorizeDotNet extends PaymentBase
 
             } else {
 
-                $oGeneralError = reset($oResponse->getMessages()->getMessage());
+                $aGeneralErrors = $oResponse->getMessages()->getMessage();
+                $oGeneralError  = reset($aGeneralErrors);
                 if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
-                    $oError         = reset($oResponse->getTransactionResponse()->getErrors());
+                    $aErrors        = $oResponse->getTransactionResponse()->getErrors();
+                    $oError         = reset($aErrors);
                     $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
                 } else {
                     $sSpecificError = '';
@@ -407,7 +411,8 @@ class AuthorizeDotNet extends PaymentBase
             ];
 
         } else {
-            $oGeneralError = reset($oResponse->getMessages()->getMessage());
+            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
     }
