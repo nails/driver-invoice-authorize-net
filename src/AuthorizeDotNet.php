@@ -92,7 +92,7 @@ class AuthorizeDotNet extends PaymentBase
         $sFailUrl,
         $sContinueUrl
     ) {
-        $oChargeResponse = Factory::factory('ChargeResponse', 'nailsapp/module-invoice');
+        $oChargeResponse = Factory::factory('ChargeResponse', 'nails/module-invoice');
 
         try {
 
@@ -180,7 +180,7 @@ class AuthorizeDotNet extends PaymentBase
      */
     public function complete($oPayment, $oInvoice, $aGetVars, $aPostVars)
     {
-        $oCompleteResponse = Factory::factory('CompleteResponse', 'nailsapp/module-invoice');
+        $oCompleteResponse = Factory::factory('CompleteResponse', 'nails/module-invoice');
         $oCompleteResponse->setStatusComplete();
         return $oCompleteResponse;
     }
@@ -202,7 +202,7 @@ class AuthorizeDotNet extends PaymentBase
      */
     public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice)
     {
-        $oRefundResponse = Factory::factory('RefundResponse', 'nailsapp/module-invoice');
+        $oRefundResponse = Factory::factory('RefundResponse', 'nails/module-invoice');
 
         try {
 

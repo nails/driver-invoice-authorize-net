@@ -1,5 +1,5 @@
 {
-    "name": "nailsapp/driver-invoice-authorize-net",
+    "name": "nails/driver-invoice-authorize-net",
     "keywords": ["Nails", "Shed Collective", "CodeIgniter", "Invoice Module", "Payments", "Driver", "Authorize.net"],
     "homepage": "http://nailsapp.co.uk/modules/invoice/driver/authorize-net",
     "description": "This is the \"Authorize.net\" driver for the Nails Invoice module.",
@@ -21,7 +21,7 @@
     "prefer-stable": true,
     "require":
     {
-        "nailsapp/module-invoice": "dev-develop",
+        "nails/module-invoice": "dev-develop",
         "authorizenet/authorizenet": "~1.9"
     },
     "autoload":
@@ -35,7 +35,7 @@
             "name": "Authorize.net",
             "type": "driver",
             "subType": "payment",
-            "forModule": "nailsapp/module-invoice",
+            "forModule": "nails/module-invoice",
             "data": {
                 "namespace": "Nails\\Invoice\\Driver\\Payment\\",
                 "class": "AuthorizeDotNet",
