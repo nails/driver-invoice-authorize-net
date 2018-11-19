@@ -277,7 +277,7 @@ class AuthorizeDotNet extends PaymentBase
      */
     public function getApiMode()
     {
-        return Environment::is('PRODUCTION') ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
+        return Environment::is(Environment::ENV_PROD) ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
     }
 
     // --------------------------------------------------------------------------
