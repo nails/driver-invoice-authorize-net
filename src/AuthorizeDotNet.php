@@ -140,12 +140,13 @@ class AuthorizeDotNet extends PaymentBase
 
                 $aGeneralErrors = $oResponse->getMessages()->getMessage();
                 $oGeneralError  = reset($aGeneralErrors);
+                $sSpecificError = '';
                 if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
-                    $aErrors        = $oResponse->getTransactionResponse()->getErrors();
-                    $oError         = reset($aErrors);
-                    $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
-                } else {
-                    $sSpecificError = '';
+                    $aErrors = $oResponse->getTransactionResponse()->getErrors();
+                    $oError  = reset($aErrors);
+                    if (!empty($oError)) {
+                        $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
+                    }
                 }
 
                 $oChargeResponse->setStatusFailed(
@@ -243,12 +244,13 @@ class AuthorizeDotNet extends PaymentBase
 
                 $aGeneralErrors = $oResponse->getMessages()->getMessage();
                 $oGeneralError  = reset($aGeneralErrors);
+                $sSpecificError = '';
                 if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
-                    $aErrors        = $oResponse->getTransactionResponse()->getErrors();
-                    $oError         = reset($aErrors);
-                    $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
-                } else {
-                    $sSpecificError = '';
+                    $aErrors = $oResponse->getTransactionResponse()->getErrors();
+                    $oError  = reset($aErrors);
+                    if (!empty($oError)) {
+                        $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
+                    }
                 }
 
                 $oRefundResponse->setStatusFailed(
