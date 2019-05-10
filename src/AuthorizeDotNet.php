@@ -14,6 +14,7 @@ namespace Nails\Invoice\Driver\Payment;
 
 use Nails\Environment;
 use Nails\Factory;
+use Nails\Invoice\Driver\Payment\AuthorizeDotNet\Constants;
 use Nails\Invoice\Driver\PaymentBase;
 use Nails\Invoice\Exception\DriverException;
 use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
@@ -22,15 +23,6 @@ use net\authorize\api\controller as AuthNetController;
 
 class AuthorizeDotNet extends PaymentBase
 {
-    /**
-     * The value of a successful response from the Authorize.Net API
-     *
-     * @type string
-     */
-    const AUTH_NET_RESPONSE_OK = 'Ok';
-
-    // --------------------------------------------------------------------------
-
     /**
      * Returns whether the driver is available to be used against the selected invoice
      *
@@ -142,22 +134,70 @@ class AuthorizeDotNet extends PaymentBase
                 );
             }
 
-            if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
+            if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
                 $oTransactionResponse = $oResponse->getTransactionResponse();
+                $aMessages            = $oTransactionResponse->getMessages() ?? [];
+                $aErrors              = $oTransactionResponse->getErrors() ?? [];
+
                 if ($oTransactionResponse === null) {
                     throw new DriverException(
                         'Received a null transaction response from the payment gateway.'
                     );
-                } elseif ($oTransactionResponse->getMessages() === null) {
+                } elseif (count($aErrors) > 0) {
+
+                    $oError = reset($aErrors);
+
+                    switch ((int) $oError->getCode()) {
+                        case Constants::TRANSACTION_CODE_DECLINED:
+                            $sError     = 'The card was declined.';
+                            $sUserError = $sError;
+                            break;
+                        case Constants::TRANSACTION_CODE_DECLINED_VOICE:
+                            $sError     = 'The card was declined due to referral to voice authorisation centre.';
+                            $sUserError = 'The card was declined.';
+                            break;
+                        case Constants::TRANSACTION_CODE_DECLINED_CARD_PICKUP:
+                            $sError     = 'The card was declined due to card requiring pick up.';
+                            $sUserError = 'The card was declined.';
+                            break;
+                        case Constants::TRANSACTION_CODE_DECLINED_INVALID_CARD_NUMBER:
+                            $sError     = 'The card was declined due to an invalid card number.';
+                            $sUserError = 'The card was declined.';
+                            break;
+                        case Constants::TRANSACTION_CODE_DECLINED_INVALID_EXPIRY:
+                            $sError     = 'The card was declined due to an invalid expiry date.';
+                            $sUserError = $sError;
+                            break;
+                        case Constants::TRANSACTION_CODE_DECLINED_INVALID_EXPIRY:
+                            $sError     = 'The card is expired.';
+                            $sUserError = $sError;
+                            break;
+                        default :
+                            $sError     = 'The gateway rejected the request';
+                            $sUserError = 'The gateway rejected the request, you may wish to try again.';
+                            break;
+                    }
+
+                    $oChargeResponse->setStatusFailed(
+                        $sError,
+                        $oError->getCode(),
+                        $sUserError
+                    );
+
                     throw new DriverException(
                         'Transaction response has no messages.'
                     );
-                }
 
-                $oChargeResponse->setStatusComplete();
-                $oChargeResponse->setTxnId($oTransactionResponse->getTransId());
-                $oChargeResponse->setFee($this->calculateFee($iAmount));
+                } elseif (count($aMessages) === 0) {
+                    throw new DriverException(
+                        'Transaction response has no messages.'
+                    );
+                } else {
+                    $oChargeResponse->setStatusComplete();
+                    $oChargeResponse->setTxnId($oTransactionResponse->getTransId());
+                    $oChargeResponse->setFee($this->calculateFee($iAmount));
+                }
 
             } else {
 
@@ -263,7 +303,7 @@ class AuthorizeDotNet extends PaymentBase
             $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
             $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
 
-            if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
+            if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
                 $oRefundResponse->setStatusComplete();
                 $oRefundResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
@@ -430,7 +470,7 @@ class AuthorizeDotNet extends PaymentBase
         $oApiController = new AuthNetController\GetTransactionDetailsController($oApiRequest);
         $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
 
-        if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
+        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
             $oTransaction = $oResponse->getTransaction();
             $oPayment     = $oTransaction->getPayment();
