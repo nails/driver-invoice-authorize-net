@@ -148,7 +148,7 @@ class AuthorizeDotNet extends PaymentBase
 
                     $oError = reset($aErrors);
 
-                    switch ((int) $oError->getCode()) {
+                    switch ((int) $oError->getErrorCode()) {
                         case Constants::TRANSACTION_CODE_DECLINED:
                             $sError     = 'The card was declined.';
                             $sUserError = $sError;
@@ -181,7 +181,7 @@ class AuthorizeDotNet extends PaymentBase
 
                     $oChargeResponse->setStatusFailed(
                         $sError,
-                        $oError->getCode(),
+                        $oError->getErrorCode(),
                         $sUserError
                     );
 
