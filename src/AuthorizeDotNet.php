@@ -137,7 +137,6 @@ class AuthorizeDotNet extends PaymentBase
             if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
                 $oTransactionResponse = $oResponse->getTransactionResponse();
-                $aMessages            = $oTransactionResponse->getMessages() ?? [];
                 $aErrors              = $oTransactionResponse->getErrors() ?? [];
 
                 if ($oTransactionResponse === null) {
@@ -185,14 +184,6 @@ class AuthorizeDotNet extends PaymentBase
                         $sUserError
                     );
 
-                    throw new DriverException(
-                        'Transaction response has no messages.'
-                    );
-
-                } elseif (count($aMessages) === 0) {
-                    throw new DriverException(
-                        'Transaction response has no messages.'
-                    );
                 } else {
                     $oChargeResponse->setStatusComplete();
                     $oChargeResponse->setTxnId($oTransactionResponse->getTransId());
