@@ -24,6 +24,7 @@ class AuthorizeDotNet extends PaymentBase
 {
     /**
      * The value of a successful response from the Authorize.Net API
+     *
      * @type string
      */
     const AUTH_NET_RESPONSE_OK = 'Ok';
@@ -32,6 +33,7 @@ class AuthorizeDotNet extends PaymentBase
 
     /**
      * Returns whether the driver is available to be used against the selected invoice
+     *
      * @return boolean
      */
     public function isAvailable($oInvoice)
@@ -43,6 +45,7 @@ class AuthorizeDotNet extends PaymentBase
 
     /**
      * Returns whether the driver uses a redirect payment flow or not.
+     *
      * @return boolean
      */
     public function isRedirect()
@@ -55,6 +58,7 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Returns the payment fields the driver requires, use static::PAYMENT_FIELDS_CARD for basic credit
      * card details.
+     *
      * @return mixed
      */
     public function getPaymentFields()
@@ -67,16 +71,16 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Initiate a payment
      *
-     * @param  integer   $iAmount      The payment amount
-     * @param  string    $sCurrency    The payment currency
-     * @param  \stdClass $oData        The driver data object
-     * @param  \stdClass $oCustomData  The custom data object
-     * @param  string    $sDescription The charge description
-     * @param  \stdClass $oPayment     The payment object
-     * @param  \stdClass $oInvoice     The invoice object
-     * @param  string    $sSuccessUrl  The URL to go to after successful payment
-     * @param  string    $sFailUrl     The URL to go to after failed payment
-     * @param  string    $sContinueUrl The URL to go to after payment is completed
+     * @param integer   $iAmount      The payment amount
+     * @param string    $sCurrency    The payment currency
+     * @param \stdClass $oData        The driver data object
+     * @param \stdClass $oCustomData  The custom data object
+     * @param string    $sDescription The charge description
+     * @param \stdClass $oPayment     The payment object
+     * @param \stdClass $oInvoice     The invoice object
+     * @param string    $sSuccessUrl  The URL to go to after successful payment
+     * @param string    $sFailUrl     The URL to go to after failed payment
+     * @param string    $sContinueUrl The URL to go to after payment is completed
      *
      * @return \Nails\Invoice\Model\ChargeResponse
      */
@@ -113,6 +117,8 @@ class AuthorizeDotNet extends PaymentBase
             $sCardExpireYear    = getFromArray('year', (array) $oCardExpire);
             $sCardCvc           = getFromArray('cvc', (array) $oData);
 
+            // --------------------------------------------------------------------------
+
             if ($sPaymentProfileId || $sCustomerProfileId) {
                 $this->payUsingProfile($oCharge, $sPaymentProfileId, $sCustomerProfileId);
             } else {
@@ -130,10 +136,27 @@ class AuthorizeDotNet extends PaymentBase
             $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
             $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
 
+            if ($oResponse === null) {
+                throw new DriverException(
+                    'Received a null response from the payment gateway.'
+                );
+            }
+
             if ($oResponse->getMessages()->getResultCode() === static::AUTH_NET_RESPONSE_OK) {
 
+                $oTransactionResponse = $oResponse->getTransactionResponse();
+                if ($oTransactionResponse === null) {
+                    throw new DriverException(
+                        'Received a null transaction response from the payment gateway.'
+                    );
+                } elseif ($oTransactionResponse->getMessages() === null) {
+                    throw new DriverException(
+                        'Transaction response has no messages.'
+                    );
+                }
+
                 $oChargeResponse->setStatusComplete();
-                $oChargeResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
+                $oChargeResponse->setTxnId($oTransactionResponse->getTransId());
                 $oChargeResponse->setFee($this->calculateFee($iAmount));
 
             } else {
@@ -141,6 +164,7 @@ class AuthorizeDotNet extends PaymentBase
                 $aGeneralErrors = $oResponse->getMessages()->getMessage();
                 $oGeneralError  = reset($aGeneralErrors);
                 $sSpecificError = '';
+
                 if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
                     $aErrors = $oResponse->getTransactionResponse()->getErrors();
                     $oError  = reset($aErrors);
@@ -156,6 +180,12 @@ class AuthorizeDotNet extends PaymentBase
                 );
             }
 
+        } catch (DriverException $e) {
+            $oChargeResponse->setStatusFailed(
+                $e->getMessage(),
+                $e->getCode(),
+                'The gateway rejected the request, you may wish to try again.'
+            );
         } catch (\Exception $e) {
             $oChargeResponse->setStatusFailed(
                 $e->getMessage(),
@@ -172,10 +202,10 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Complete the payment
      *
-     * @param  \stdClass $oPayment  The Payment object
-     * @param  \stdClass $oInvoice  The Invoice object
-     * @param  array     $aGetVars  Any $_GET variables passed from the redirect flow
-     * @param  array     $aPostVars Any $_POST variables passed from the redirect flow
+     * @param \stdClass $oPayment  The Payment object
+     * @param \stdClass $oInvoice  The Invoice object
+     * @param array     $aGetVars  Any $_GET variables passed from the redirect flow
+     * @param array     $aPostVars Any $_POST variables passed from the redirect flow
      *
      * @return \Nails\Invoice\Model\CompleteResponse
      */
@@ -191,13 +221,13 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Issue a refund for a payment
      *
-     * @param  string    $sTxnId      The original transaction's ID
-     * @param  integer   $iAmount     The amount to refund
-     * @param  string    $sCurrency   The currency in which to refund
-     * @param  \stdClass $oCustomData The custom data object
-     * @param  string    $sReason     The refund's reason
-     * @param  \stdClass $oPayment    The payment object
-     * @param  \stdClass $oInvoice    The invoice object
+     * @param string    $sTxnId      The original transaction's ID
+     * @param integer   $iAmount     The amount to refund
+     * @param string    $sCurrency   The currency in which to refund
+     * @param \stdClass $oCustomData The custom data object
+     * @param string    $sReason     The refund's reason
+     * @param \stdClass $oPayment    The payment object
+     * @param \stdClass $oInvoice    The invoice object
      *
      * @return \Nails\Invoice\Model\RefundResponse
      */
@@ -275,6 +305,7 @@ class AuthorizeDotNet extends PaymentBase
 
     /**
      * Returns the mode to be used when running an Authorize.Net SDK controller.
+     *
      * @return string
      */
     public function getApiMode()
@@ -286,6 +317,7 @@ class AuthorizeDotNet extends PaymentBase
 
     /**
      * Returns an Authorize.Net authentication object
+     *
      * @return AuthNetAPI\MerchantAuthenticationType
      */
     public function getAuthentication()
@@ -386,8 +418,8 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @param string $sTxnId The original transaction ID
      *
-     * @throws DriverException
      * @return \stdClass
+     * @throws DriverException
      */
     protected function getTransactionDetails($sTxnId)
     {
