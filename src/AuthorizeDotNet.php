@@ -96,6 +96,10 @@ class AuthorizeDotNet extends PaymentBase
             $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('authCaptureTransaction');
 
+            // Create order information
+            $oOrder = new AuthNetAPI\OrderType();
+            $oOrder->setInvoiceNumber($oInvoice->ref);
+
             /**
              * If a payment_profile_id or customer_profile_id has been supplied then use these over
              * any supplied card details.
@@ -119,6 +123,7 @@ class AuthorizeDotNet extends PaymentBase
 
             $oCharge->setCurrencyCode($sCurrency);
             $oCharge->setAmount($iAmount / 100);
+            $oCharge->setOrder($oOrder);
 
             $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
             $oApiRequest->setMerchantAuthentication($this->getAuthentication());
