@@ -1,11 +1,18 @@
 {
     "name": "nails/driver-invoice-authorize-net",
-    "keywords": ["Nails", "Shed Collective", "CodeIgniter", "Invoice Module", "Payments", "Driver", "Authorize.net"],
+    "keywords": [
+        "Nails",
+        "Shed Collective",
+        "CodeIgniter",
+        "Invoice Module",
+        "Payments",
+        "Driver",
+        "Authorize.net"
+    ],
     "homepage": "http://nailsapp.co.uk/modules/invoice/driver/authorize-net",
     "description": "This is the \"Authorize.net\" driver for the Nails Invoice module.",
     "license": "MIT",
-    "authors":
-    [
+    "authors": [
         {
             "name": "Pablo de la Pena",
             "email": "p@nailsapp.co.uk",
@@ -13,25 +20,25 @@
             "role": "Developer"
         }
     ],
-    "support":
-    {
+    "support": {
         "email": "hello@nailsapp.co.uk"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
-    "require":
-    {
+    "require": {
         "nails/module-invoice": "dev-develop",
         "authorizenet/authorizenet": "~1.9"
     },
-    "autoload":
-    {
-        "psr-4": {"Nails\\Invoice\\Driver\\": "src/"}
+    "require-dev": {
+        "phpunit/phpunit": "8.*"
     },
-    "extra":
-    {
-        "nails" :
-        {
+    "autoload": {
+        "psr-4": {
+            "Nails\\Invoice\\Driver\\": "src/"
+        }
+    },
+    "extra": {
+        "nails" : {
             "name": "Authorize.net",
             "type": "driver",
             "subType": "payment",
