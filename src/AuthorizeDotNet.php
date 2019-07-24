@@ -17,6 +17,7 @@ use Nails\Factory;
 use Nails\Invoice\Driver\Payment\AuthorizeDotNet\Constants;
 use Nails\Invoice\Driver\PaymentBase;
 use Nails\Invoice\Exception\DriverException;
+use Nails\Invoice\Factory\ScaResponse;
 use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 use net\authorize\api\contract\v1 as AuthNetAPI;
 use net\authorize\api\controller as AuthNetController;
@@ -56,6 +57,18 @@ class AuthorizeDotNet extends PaymentBase
     public function getPaymentFields()
     {
         return static::PAYMENT_FIELDS_CARD;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Returns any assets to load during checkout
+     *
+     * @return array
+     */
+    public function getCheckoutAssets(): array
+    {
+        return [];
     }
 
     // --------------------------------------------------------------------------
@@ -231,6 +244,22 @@ class AuthorizeDotNet extends PaymentBase
         }
 
         return $oChargeResponse;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Handles any SCA requests
+     *
+     * @param ScaResponse $oScaResponse The SCA Response object
+     * @param array       $aData        Any saved SCA data
+     * @param string      $sSuccessUrl  The URL to redirect to after authorisation
+     *
+     * @return ScaResponse
+     */
+    public function sca(ScaResponse $oScaResponse, array $aData, string $sSuccessUrl): ScaResponse
+    {
+        //  @todo (Pablo - 2019-07-24) - Implement this method
     }
 
     // --------------------------------------------------------------------------
