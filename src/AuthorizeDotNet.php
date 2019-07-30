@@ -68,7 +68,23 @@ class AuthorizeDotNet extends PaymentBase
      */
     public function getCheckoutAssets(): array
     {
-        return [];
+        return array_filter([
+            Environment::is(Environment::ENV_PROD) ? [
+                'https://js.authorize.net/v1/Accept.js',
+                null,
+                'JS',
+            ] : null,
+            Environment::not(Environment::ENV_PROD) ? [
+                'https://jstest.authorize.net/v1/Accept.js',
+                null,
+                'JS',
+            ] : null,
+            [
+                'checkout.min.js',
+                $this->getSlug(),
+                'JS',
+            ],
+        ]);
     }
 
     // --------------------------------------------------------------------------
