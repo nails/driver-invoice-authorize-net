@@ -87,8 +87,8 @@ class AuthorizeDotNet extends PaymentBase
             [
                 'checkout.min.js?' . implode('&', [
                     'hash=' . urlencode(md5($this->getSlug())) . '',
-                    'key=' . urlencode($this->getSetting('sPublicKey')) . '',
-                    'loginId=' . urlencode($this->getSetting('sLoginId')) . '',
+                    'key=' . urlencode($this->getEnvSetting('sPublicKey')) . '',
+                    'loginId=' . urlencode($this->getEnvSetting('sLoginId')) . '',
                 ]),
                 $this->getSlug(),
                 'JS',
@@ -428,9 +428,27 @@ class AuthorizeDotNet extends PaymentBase
     public function getAuthentication()
     {
         $oAuthentication = new AuthNetAPI\MerchantAuthenticationType();
-        $oAuthentication->setName($this->getSetting('sLoginId'));
-        $oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
+        $oAuthentication->setName($this->getEnvSetting('sLoginId'));
+        $oAuthentication->setTransactionKey($this->getEnvSetting('sTransactionKey'));
         return $oAuthentication;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Returns an environment orientated setting
+     *
+     * @param string|null $sProperty the proeprty to fetch
+     *
+     * @return mixed
+     */
+    protected function getEnvSetting(string $sProperty = null)
+    {
+        if (Environment::is(Environment::ENV_PROD)) {
+            return parent::getSetting($sProperty);
+        } else {
+            return parent::getSetting($sProperty . 'Test');
+        }
     }
 
     // --------------------------------------------------------------------------
