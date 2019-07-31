@@ -16,7 +16,12 @@ use Nails\Environment;
 use Nails\Factory;
 use Nails\Invoice\Driver\Payment\AuthorizeDotNet\Constants;
 use Nails\Invoice\Driver\PaymentBase;
+use Nails\Invoice\Exception\ChargeRequestException;
 use Nails\Invoice\Exception\DriverException;
+use Nails\Invoice\Factory\ChargeRequest;
+use Nails\Invoice\Factory\ChargeResponse;
+use Nails\Invoice\Factory\CompleteResponse;
+use Nails\Invoice\Factory\RefundResponse;
 use Nails\Invoice\Factory\ScaResponse;
 use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 use net\authorize\api\contract\v1 as AuthNetAPI;
@@ -27,7 +32,7 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Returns whether the driver is available to be used against the selected invoice
      *
-     * @return boolean
+     * @return bool
      */
     public function isAvailable($oInvoice)
     {
@@ -39,7 +44,7 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Returns whether the driver uses a redirect payment flow or not.
      *
-     * @return boolean
+     * @return bool
      */
     public function isRedirect()
     {
@@ -52,7 +57,7 @@ class AuthorizeDotNet extends PaymentBase
      * Returns the payment fields the driver requires, use static::PAYMENT_FIELDS_CARD for basic credit
      * card details.
      *
-     * @return mixed
+     * @return array|string
      */
     public function getPaymentFields()
     {
@@ -80,11 +85,30 @@ class AuthorizeDotNet extends PaymentBase
                 'JS',
             ] : null,
             [
-                'checkout.min.js',
+                'checkout.min.js?' . implode('&', [
+                    'hash=' . urlencode(md5($this->getSlug())) . '',
+                    'key=' . urlencode($this->getSetting('sPublicKey')) . '',
+                    'loginId=' . urlencode($this->getSetting('sLoginId')) . '',
+                ]),
                 $this->getSlug(),
                 'JS',
             ],
         ]);
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Prepares a ChargeRequest object
+     *
+     * @param ChargeRequest $oChargeRequest The ChargeRequest object to prepare
+     * @param array         $aData          Any data which was requested by getPaymentFields()
+     *
+     * @throws ChargeRequestException
+     */
+    public function prepareChargeRequest(ChargeRequest $oChargeRequest, array $aData)
+    {
+        $this->setChargeRequestFields($oChargeRequest, $aData, [['key' => 'token']]);
     }
 
     // --------------------------------------------------------------------------
@@ -103,7 +127,7 @@ class AuthorizeDotNet extends PaymentBase
      * @param string    $sFailUrl     The URL to go to after failed payment
      * @param string    $sContinueUrl The URL to go to after payment is completed
      *
-     * @return \Nails\Invoice\Model\ChargeResponse
+     * @return ChargeResponse
      */
     public function charge(
         $iAmount,
@@ -117,6 +141,8 @@ class AuthorizeDotNet extends PaymentBase
         $sFailUrl,
         $sContinueUrl
     ) {
+
+        /** @var ChargeResponse $oChargeResponse */
         $oChargeResponse = Factory::factory('ChargeResponse', 'nails/module-invoice');
 
         try {
@@ -136,18 +162,14 @@ class AuthorizeDotNet extends PaymentBase
 
             $sPaymentProfileId  = getFromArray('payment_profile_id', (array) $oCustomData);
             $sCustomerProfileId = getFromArray('customer_profile_id', (array) $oCustomData);
-            $sCardNumber        = getFromArray('number', (array) $oData);
-            $oCardExpire        = getFromArray('exp', (array) $oData);
-            $sCardExpireMonth   = getFromArray('month', (array) $oCardExpire);
-            $sCardExpireYear    = getFromArray('year', (array) $oCardExpire);
-            $sCardCvc           = getFromArray('cvc', (array) $oData);
+            $sToken             = getFromArray('token', (array) $oCustomData);
 
             // --------------------------------------------------------------------------
 
             if ($sPaymentProfileId || $sCustomerProfileId) {
                 $this->payUsingProfile($oCharge, $sPaymentProfileId, $sCustomerProfileId);
             } else {
-                $this->payUsingCardDetails($oCharge, $sCardNumber, $sCardExpireMonth, $sCardExpireYear, $sCardCvc);
+                $this->payUsingToken($oCharge, $sToken);
             }
 
             $oCharge->setCurrencyCode($sCurrency);
@@ -288,10 +310,11 @@ class AuthorizeDotNet extends PaymentBase
      * @param array     $aGetVars  Any $_GET variables passed from the redirect flow
      * @param array     $aPostVars Any $_POST variables passed from the redirect flow
      *
-     * @return \Nails\Invoice\Model\CompleteResponse
+     * @return CompleteResponse
      */
     public function complete($oPayment, $oInvoice, $aGetVars, $aPostVars)
     {
+        /** @var CompleteResponse $oCompleteResponse */
         $oCompleteResponse = Factory::factory('CompleteResponse', 'nails/module-invoice');
         $oCompleteResponse->setStatusComplete();
         return $oCompleteResponse;
@@ -310,10 +333,11 @@ class AuthorizeDotNet extends PaymentBase
      * @param \stdClass $oPayment    The payment object
      * @param \stdClass $oInvoice    The invoice object
      *
-     * @return \Nails\Invoice\Model\RefundResponse
+     * @return RefundResponse
      */
     public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice)
     {
+        /** @var RefundResponse $oRefundResponse */
         $oRefundResponse = Factory::factory('RefundResponse', 'nails/module-invoice');
 
         try {
@@ -422,6 +446,9 @@ class AuthorizeDotNet extends PaymentBase
      */
     protected function payUsingProfile($oCharge, $iProfileId, $iCustomerId)
     {
+        //  @todo (Pablo - 2019-07-31) - pay using profile details
+        dd('pay using profile details', $iProfileId, $iCustomerId);
+
         if (empty($iProfileId)) {
             throw new DriverException('A Payment Profile ID must be supplied.');
         } elseif (empty($iCustomerId)) {
@@ -443,35 +470,27 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Complete the charge using credit card details
      *
-     * @param AuthNetAPI\TransactionRequestType $oCharge          the Charge object
-     * @param string                            $sCardNumber      The Card's number
-     * @param integer                           $iCardExpireMonth The Card's expiry month
-     * @param integer                           $iCardExpireYear  The Card's expiry year
-     * @param string                            $sCardCvc         The Card's CVC
+     * @param AuthNetAPI\TransactionRequestType $oCharge The Charge object
+     * @param string                            $sToken  The payment token
      *
      * @throws DriverException
      */
-    protected function payUsingCardDetails($oCharge, $sCardNumber, $iCardExpireMonth, $iCardExpireYear, $sCardCvc)
+    protected function payUsingToken($oCharge, $sToken)
     {
-        $sCardNumber = preg_replace('/[^\d]/', '', $sCardNumber);
+        $oToken = json_decode($sToken);
 
-        if (empty($sCardNumber)) {
-            throw new DriverException('Card number must be supplied.');
-        } elseif (empty($iCardExpireMonth)) {
-            throw new DriverException('Card expiry month must be supplied.');
-        } elseif (empty($iCardExpireYear)) {
-            throw new DriverException('Card expiry year must be supplied.');
-        } elseif (empty($sCardCvc)) {
-            throw new DriverException('Card CVC number must be supplied.');
+        if (empty($oToken->dataDescriptor)) {
+            throw new DriverException('Token must contain a dataDescriptor property.');
+        } elseif (empty($oToken->dataValue)) {
+            throw new DriverException('Token must contain a dataValue property.');
         }
 
-        $oCreditCard = new AuthNetAPI\CreditCardType();
-        $oCreditCard->setCardNumber($sCardNumber);
-        $oCreditCard->setExpirationDate($iCardExpireYear . '-' . $iCardExpireMonth);
-        $oCreditCard->setCardCode($sCardCvc);
+        $oOpaqueData = new AuthNetAPI\OpaqueDataType();
+        $oOpaqueData->setDataDescriptor($oToken->dataDescriptor);
+        $oOpaqueData->setDataValue($oToken->dataValue);
 
         $oPayment = new AuthNetAPI\PaymentType();
-        $oPayment->setCreditCard($oCreditCard);
+        $oPayment->setOpaqueData($oOpaqueData);
 
         $oCharge->setPayment($oPayment);
     }

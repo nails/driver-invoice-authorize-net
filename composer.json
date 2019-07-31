@@ -38,7 +38,7 @@
         }
     },
     "extra": {
-        "nails" : {
+        "nails": {
             "name": "Authorize.net",
             "type": "driver",
             "subType": "payment",
@@ -66,6 +66,12 @@
                             {
                                 "key": "sLoginId",
                                 "label": "Log-In ID",
+                                "type": "password",
+                                "encrypted": true
+                            },
+                            {
+                                "key": "sPublicKey",
+                                "label": "Public Key",
                                 "type": "password",
                                 "encrypted": true
                             },
