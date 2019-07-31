@@ -297,7 +297,7 @@ class AuthorizeDotNet extends PaymentBase
      */
     public function sca(ScaResponse $oScaResponse, array $aData, string $sSuccessUrl): ScaResponse
     {
-        //  @todo (Pablo - 2019-07-24) - Implement this method
+        //  SCA is not supported... yet
     }
 
     // --------------------------------------------------------------------------
@@ -464,9 +464,6 @@ class AuthorizeDotNet extends PaymentBase
      */
     protected function payUsingProfile($oCharge, $iProfileId, $iCustomerId)
     {
-        //  @todo (Pablo - 2019-07-31) - pay using profile details
-        dd('pay using profile details', $iProfileId, $iCustomerId);
-
         if (empty($iProfileId)) {
             throw new DriverException('A Payment Profile ID must be supplied.');
         } elseif (empty($iCustomerId)) {
