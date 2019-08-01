@@ -34,9 +34,23 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return bool
      */
-    public function isAvailable($oInvoice)
+    public function isAvailable($oInvoice): bool
     {
         return true;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Returns the currencies which this driver supports, it will only be presented
+     * when attempting to pay an invoice in a supported currency
+     *
+     * @return string[]|null
+     */
+    public function getSupportedCurrencies(): ?array
+    {
+        $sCode = appSetting('sSupportedCurrency', 'nails/driver-invoice-authorize-net');
+        return $sCode ? [strtoupper($sCode)] : null;
     }
 
     // --------------------------------------------------------------------------
@@ -46,7 +60,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return bool
      */
-    public function isRedirect()
+    public function isRedirect(): bool
     {
         return false;
     }
@@ -106,7 +120,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @throws ChargeRequestException
      */
-    public function prepareChargeRequest(ChargeRequest $oChargeRequest, array $aData)
+    public function prepareChargeRequest(ChargeRequest $oChargeRequest, array $aData): void
     {
         $this->setChargeRequestFields($oChargeRequest, $aData, [['key' => 'token']]);
     }
@@ -140,7 +154,7 @@ class AuthorizeDotNet extends PaymentBase
         $sSuccessUrl,
         $sFailUrl,
         $sContinueUrl
-    ) {
+    ): ChargeResponse {
 
         /** @var ChargeResponse $oChargeResponse */
         $oChargeResponse = Factory::factory('ChargeResponse', 'nails/module-invoice');
@@ -312,7 +326,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return CompleteResponse
      */
-    public function complete($oPayment, $oInvoice, $aGetVars, $aPostVars)
+    public function complete($oPayment, $oInvoice, $aGetVars, $aPostVars): CompleteResponse
     {
         /** @var CompleteResponse $oCompleteResponse */
         $oCompleteResponse = Factory::factory('CompleteResponse', 'nails/module-invoice');
@@ -335,7 +349,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return RefundResponse
      */
-    public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice)
+    public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice): RefundResponse
     {
         /** @var RefundResponse $oRefundResponse */
         $oRefundResponse = Factory::factory('RefundResponse', 'nails/module-invoice');
@@ -413,7 +427,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return string
      */
-    public function getApiMode()
+    public function getApiMode(): string
     {
         return Environment::is(Environment::ENV_PROD) ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
     }
@@ -425,7 +439,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return AuthNetAPI\MerchantAuthenticationType
      */
-    public function getAuthentication()
+    public function getAuthentication(): AuthNetAPI\MerchantAuthenticationType
     {
         $oAuthentication = new AuthNetAPI\MerchantAuthenticationType();
         $oAuthentication->setName($this->getEnvSetting('sLoginId'));
@@ -462,7 +476,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @throws DriverException
      */
-    protected function payUsingProfile($oCharge, $iProfileId, $iCustomerId)
+    protected function payUsingProfile($oCharge, $iProfileId, $iCustomerId): void
     {
         if (empty($iProfileId)) {
             throw new DriverException('A Payment Profile ID must be supplied.');
@@ -490,7 +504,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @throws DriverException
      */
-    protected function payUsingToken($oCharge, $sToken)
+    protected function payUsingToken($oCharge, $sToken): void
     {
         $oToken = json_decode($sToken);
 
@@ -519,7 +533,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return int
      */
-    protected function calculateFee($iAmount)
+    protected function calculateFee($iAmount): int
     {
         $iFixedFee      = (int) $this->getSetting('iPerTransactionFee');
         $fPercentageFee = (float) $this->getSetting('iPerTransactionPercentage');
@@ -536,7 +550,7 @@ class AuthorizeDotNet extends PaymentBase
      * @return \stdClass
      * @throws DriverException
      */
-    protected function getTransactionDetails($sTxnId)
+    protected function getTransactionDetails($sTxnId): \stdClass
     {
         $oApiRequest = new AuthNetAPI\GetTransactionDetailsRequest();
         $oApiRequest->setMerchantAuthentication($this->getAuthentication());
