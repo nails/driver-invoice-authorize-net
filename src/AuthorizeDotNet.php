@@ -28,6 +28,7 @@ use Nails\Invoice\Factory\ScaResponse;
 use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 use net\authorize\api\contract\v1 as AuthNetAPI;
 use net\authorize\api\controller as AuthNetController;
+use stdClass;
 
 class AuthorizeDotNet extends PaymentBase
 {
@@ -117,23 +118,20 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Prepares a ChargeRequest object
      *
-     * @param ChargeRequest $oChargeRequest      The ChargeRequest object to prepare
-     * @param array         $aData               Any data which was requested by getPaymentFields()
-     * @param Source        $oSavedPaymentSource The saved payment source to use
+     * @param ChargeRequest $oChargeRequest The ChargeRequest object to prepare
+     * @param array         $aData          Any data which was requested by getPaymentFields()
      *
      * @throws ChargeRequestException
      */
     public function prepareChargeRequest(
         ChargeRequest $oChargeRequest,
-        array $aData,
-        Source $oSavedPaymentSource = null
+        array $aData
     ): void {
     {
         $this->setChargeRequestFields(
             $oChargeRequest,
             $aData,
-            $[['key' => 'token']],
-            $oSavedPaymentSource
+            $[['key' => 'token']]
         );
     }
 
@@ -142,28 +140,30 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Initiate a payment
      *
-     * @param integer   $iAmount      The payment amount
-     * @param string    $sCurrency    The payment currency
-     * @param \stdClass $oData        The driver data object
-     * @param \stdClass $oCustomData  The custom data object
-     * @param string    $sDescription The charge description
-     * @param \stdClass $oPayment     The payment object
-     * @param \stdClass $oInvoice     The invoice object
-     * @param string    $sSuccessUrl  The URL to go to after successful payment
-     * @param string    $sErrorUrl    The URL to go to after failed payment
+     * @param int                  $iAmount      The payment amount
+     * @param string               $sCurrency    The payment currency
+     * @param stdClass             $oData        An array of driver data
+     * @param stdClass             $oCustomData  The custom data object
+     * @param string               $sDescription The charge description
+     * @param Resource\Payment     $oPayment     The payment object
+     * @param Resource\Invoice     $oInvoice     The invoice object
+     * @param string               $sSuccessUrl  The URL to go to after successful payment
+     * @param string               $sErrorUrl    The URL to go to after failed payment
+     * @param Resource\Source|null $oSource      The saved payment source to use
      *
      * @return ChargeResponse
      */
     public function charge(
-        $iAmount,
-        $sCurrency,
-        $oData,
-        $oCustomData,
-        $sDescription,
-        $oPayment,
-        $oInvoice,
-        $sSuccessUrl,
-        $sErrorUrl
+        int $iAmount,
+        string $sCurrency,
+        stdClass $oData,
+        stdClass $oCustomData,
+        string $sDescription,
+        Resource\Payment $oPayment,
+        Resource\Invoice $oInvoice,
+        string $sSuccessUrl,
+        string $sErrorUrl,
+        Resource\Source $oSource = null
     ): ChargeResponse {
 
         /** @var ChargeResponse $oChargeResponse */
@@ -329,10 +329,10 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Complete the payment
      *
-     * @param \stdClass $oPayment  The Payment object
-     * @param \stdClass $oInvoice  The Invoice object
-     * @param array     $aGetVars  Any $_GET variables passed from the redirect flow
-     * @param array     $aPostVars Any $_POST variables passed from the redirect flow
+     * @param stdClass $oPayment  The Payment object
+     * @param stdClass $oInvoice  The Invoice object
+     * @param array    $aGetVars  Any $_GET variables passed from the redirect flow
+     * @param array    $aPostVars Any $_POST variables passed from the redirect flow
      *
      * @return CompleteResponse
      */
@@ -349,13 +349,13 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Issue a refund for a payment
      *
-     * @param string    $sTxnId      The original transaction's ID
-     * @param integer   $iAmount     The amount to refund
-     * @param string    $sCurrency   The currency in which to refund
-     * @param \stdClass $oCustomData The custom data object
-     * @param string    $sReason     The refund's reason
-     * @param \stdClass $oPayment    The payment object
-     * @param \stdClass $oInvoice    The invoice object
+     * @param string   $sTxnId      The original transaction's ID
+     * @param integer  $iAmount     The amount to refund
+     * @param string   $sCurrency   The currency in which to refund
+     * @param stdClass $oCustomData The custom data object
+     * @param string   $sReason     The refund's reason
+     * @param stdClass $oPayment    The payment object
+     * @param stdClass $oInvoice    The invoice object
      *
      * @return RefundResponse
      */
@@ -557,10 +557,10 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @param string $sTxnId The original transaction ID
      *
-     * @return \stdClass
+     * @return stdClass
      * @throws DriverException
      */
-    protected function getTransactionDetails($sTxnId): \stdClass
+    protected function getTransactionDetails($sTxnId): stdClass
     {
         $oApiRequest = new AuthNetAPI\GetTransactionDetailsRequest();
         $oApiRequest->setMerchantAuthentication($this->getAuthentication());
