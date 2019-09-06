@@ -116,14 +116,24 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Prepares a ChargeRequest object
      *
-     * @param ChargeRequest $oChargeRequest The ChargeRequest object to prepare
-     * @param array         $aData          Any data which was requested by getPaymentFields()
+     * @param ChargeRequest $oChargeRequest      The ChargeRequest object to prepare
+     * @param array         $aData               Any data which was requested by getPaymentFields()
+     * @param Source        $oSavedPaymentSource The saved payment source to use
      *
      * @throws ChargeRequestException
      */
-    public function prepareChargeRequest(ChargeRequest $oChargeRequest, array $aData): void
+    public function prepareChargeRequest(
+        ChargeRequest $oChargeRequest,
+        array $aData,
+        Source $oSavedPaymentSource = null
+    ): void {
     {
-        $this->setChargeRequestFields($oChargeRequest, $aData, [['key' => 'token']]);
+        $this->setChargeRequestFields(
+            $oChargeRequest,
+            $aData,
+            $[['key' => 'token']],
+            $oSavedPaymentSource
+        );
     }
 
     // --------------------------------------------------------------------------
