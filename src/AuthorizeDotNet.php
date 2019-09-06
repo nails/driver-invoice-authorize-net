@@ -15,6 +15,7 @@ namespace Nails\Invoice\Driver\Payment;
 use Nails\Common\Exception\NailsException;
 use Nails\Environment;
 use Nails\Factory;
+use Nails\Invoice;
 use Nails\Invoice\Driver\Payment\AuthorizeDotNet\Constants;
 use Nails\Invoice\Driver\PaymentBase;
 use Nails\Invoice\Exception\ChargeRequestException;
@@ -166,7 +167,7 @@ class AuthorizeDotNet extends PaymentBase
     ): ChargeResponse {
 
         /** @var ChargeResponse $oChargeResponse */
-        $oChargeResponse = Factory::factory('ChargeResponse', 'nails/module-invoice');
+        $oChargeResponse = Factory::factory('ChargeResponse', Invoice\Constants::MODULE_SLUG);
 
         try {
 
@@ -338,7 +339,7 @@ class AuthorizeDotNet extends PaymentBase
     public function complete($oPayment, $oInvoice, $aGetVars, $aPostVars): CompleteResponse
     {
         /** @var CompleteResponse $oCompleteResponse */
-        $oCompleteResponse = Factory::factory('CompleteResponse', 'nails/module-invoice');
+        $oCompleteResponse = Factory::factory('CompleteResponse', Invoice\Constants::MODULE_SLUG);
         $oCompleteResponse->setStatusComplete();
         return $oCompleteResponse;
     }
@@ -361,7 +362,7 @@ class AuthorizeDotNet extends PaymentBase
     public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice): RefundResponse
     {
         /** @var RefundResponse $oRefundResponse */
-        $oRefundResponse = Factory::factory('RefundResponse', 'nails/module-invoice');
+        $oRefundResponse = Factory::factory('RefundResponse', Invoice\Constants::MODULE_SLUG);
 
         try {
 
