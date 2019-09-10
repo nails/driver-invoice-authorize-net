@@ -146,7 +146,7 @@ class AuthorizeDotNet extends PaymentBase
      * @param int                  $iAmount      The payment amount
      * @param Currency             $oCurrency    The payment currency
      * @param stdClass             $oData        An array of driver data
-     * @param stdClass             $oCustomData  The custom data object
+     * @param stdClass             $oPaymentData The payment data object
      * @param string               $sDescription The charge description
      * @param Resource\Payment     $oPayment     The payment object
      * @param Resource\Invoice     $oInvoice     The invoice object
@@ -160,7 +160,7 @@ class AuthorizeDotNet extends PaymentBase
         int $iAmount,
         Currency $oCurrency,
         stdClass $oData,
-        stdClass $oCustomData,
+        stdClass $oPaymentData,
         string $sDescription,
         Resource\Payment $oPayment,
         Resource\Invoice $oInvoice,
@@ -187,9 +187,9 @@ class AuthorizeDotNet extends PaymentBase
              * any supplied card details.
              */
 
-            $sPaymentProfileId  = getFromArray('payment_profile_id', (array) $oCustomData);
-            $sCustomerProfileId = getFromArray('customer_profile_id', (array) $oCustomData);
-            $sToken             = getFromArray('token', (array) $oCustomData);
+            $sPaymentProfileId  = getFromArray('payment_profile_id', (array) $oPaymentData);
+            $sCustomerProfileId = getFromArray('customer_profile_id', (array) $oPaymentData);
+            $sToken             = getFromArray('token', (array) $oPaymentData);
 
             // --------------------------------------------------------------------------
 
@@ -356,13 +356,13 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Issue a refund for a payment
      *
-     * @param string           $sTxnId      The original transaction's ID
-     * @param int              $iAmount     The amount to refund
-     * @param Currency         $oCurrency   The currency in which to refund
-     * @param stdClass         $oCustomData The custom data object
-     * @param string           $sReason     The refund's reason
-     * @param Resource\Payment $oPayment    The payment object
-     * @param Resource\Invoice $oInvoice    The invoice object
+     * @param string           $sTxnId       The original transaction's ID
+     * @param int              $iAmount      The amount to refund
+     * @param Currency         $oCurrency    The currency in which to refund
+     * @param stdClass         $oPaymentData The payment data object
+     * @param string           $sReason      The refund's reason
+     * @param Resource\Payment $oPayment     The payment object
+     * @param Resource\Invoice $oInvoice     The invoice object
      *
      * @return RefundResponse
      */
@@ -370,7 +370,7 @@ class AuthorizeDotNet extends PaymentBase
         string $sTxnId,
         int $iAmount,
         Currency $oCurrency,
-        stdClass $oCustomData,
+        stdClass $oPaymentData,
         string $sReason,
         Resource\Payment $oPayment,
         Resource\Invoice $oInvoice
