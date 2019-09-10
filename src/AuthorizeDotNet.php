@@ -269,7 +269,7 @@ class AuthorizeDotNet extends PaymentBase
 
                 } else {
                     $oChargeResponse->setStatusComplete();
-                    $oChargeResponse->setTxnId($oTransactionResponse->getTransId());
+                    $oChargeResponse->setTransactionId($oTransactionResponse->getTransId());
                     $oChargeResponse->setFee($this->calculateFee($iAmount));
                 }
 
@@ -356,18 +356,18 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Issue a refund for a payment
      *
-     * @param string           $sTxnId       The original transaction's ID
-     * @param int              $iAmount      The amount to refund
-     * @param Currency         $oCurrency    The currency in which to refund
-     * @param stdClass         $oPaymentData The payment data object
-     * @param string           $sReason      The refund's reason
-     * @param Resource\Payment $oPayment     The payment object
-     * @param Resource\Invoice $oInvoice     The invoice object
+     * @param string           $sTransactionId The original transaction's ID
+     * @param int              $iAmount        The amount to refund
+     * @param Currency         $oCurrency      The currency in which to refund
+     * @param stdClass         $oPaymentData   The payment data object
+     * @param string           $sReason        The refund's reason
+     * @param Resource\Payment $oPayment       The payment object
+     * @param Resource\Invoice $oInvoice       The invoice object
      *
      * @return RefundResponse
      */
     public function refund(
-        string $sTxnId,
+        string $sTransactionId,
         int $iAmount,
         Currency $oCurrency,
         stdClass $oPaymentData,
@@ -382,7 +382,7 @@ class AuthorizeDotNet extends PaymentBase
         try {
 
             //  Get the transaction details
-            $oTransactionDetails = $this->getTransactionDetails($sTxnId);
+            $oTransactionDetails = $this->getTransactionDetails($sTransactionId);
 
             // Create the payment data for a credit card
             $oCard = new AuthNetAPI\CreditCardType();
@@ -393,7 +393,7 @@ class AuthorizeDotNet extends PaymentBase
 
             $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('refundTransaction');
-            $oCharge->setRefTransId($sTxnId);
+            $oCharge->setRefTransId($sTransactionId);
             $oCharge->setCurrencyCode($oCurrency->code);
             $oCharge->setAmount($iAmount / 100);
             $oCharge->setPayment($oPayment);
@@ -410,7 +410,7 @@ class AuthorizeDotNet extends PaymentBase
             if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
                 $oRefundResponse->setStatusComplete();
-                $oRefundResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
+                $oRefundResponse->setTransactionId($oResponse->getTransactionResponse()->getTransId());
                 //  @todo (Pablo - 2018-01-31) - Calculate refunded fee
                 //  $oRefundResponse->setFee($oStripeResponse->balance_transaction->fee * -1);
 
@@ -570,16 +570,16 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Queries Authorize.Net for details about a transaction
      *
-     * @param string $sTxnId The original transaction ID
+     * @param string $sTransactionId The original transaction ID
      *
      * @return stdClass
      * @throws DriverException
      */
-    protected function getTransactionDetails($sTxnId): stdClass
+    protected function getTransactionDetails($sTransactionId): stdClass
     {
         $oApiRequest = new AuthNetAPI\GetTransactionDetailsRequest();
         $oApiRequest->setMerchantAuthentication($this->getAuthentication());
-        $oApiRequest->setTransId($sTxnId);
+        $oApiRequest->setTransId($sTransactionId);
 
         $oApiController = new AuthNetController\GetTransactionDetailsController($oApiRequest);
         $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
