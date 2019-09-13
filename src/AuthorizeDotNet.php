@@ -32,6 +32,11 @@ use net\authorize\api\contract\v1 as AuthNetAPI;
 use net\authorize\api\controller as AuthNetController;
 use stdClass;
 
+/**
+ * Class AuthorizeDotNet
+ *
+ * @package Nails\Invoice\Driver\Payment
+ */
 class AuthorizeDotNet extends PaymentBase
 {
     /**
@@ -166,6 +171,7 @@ class AuthorizeDotNet extends PaymentBase
         Resource\Invoice $oInvoice,
         string $sSuccessUrl,
         string $sErrorUrl,
+        bool $bCustomerPresent,
         Resource\Source $oSource = null
     ): ChargeResponse {
 
