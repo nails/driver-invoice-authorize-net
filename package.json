@@ -1,0 +1,23 @@
+{
+    "name": "nails-driver-invoice-authorize-net",
+    "description": "Authorize.NET Driver for Nails Invoice Module",
+    "author": "hello@nailsapp.co.uk",
+    "analyze": true,
+    "license": "MIT",
+    "repository": "https://github.com/nails/module-invoice/driver/authorize-net",
+    "devDependencies": {
+        "autoprefixer": "^9.6",
+        "css-loader": "^3.1",
+        "mini-css-extract-plugin": "^0.8",
+        "node-sass": "^4.12",
+        "postcss-loader": "^3.0",
+        "sass-loader": "^7.1",
+        "webpack": "^4.36",
+        "webpack-command": "^0.4"
+    },
+    "scripts": {
+        "build": "webpack -p",
+        "build-dev": "webpack",
+        "watch": "webpack --watch"
+    }
+}

@@ -38,7 +38,7 @@
         }
     },
     "extra": {
-        "nails" : {
+        "nails": {
             "name": "Authorize.net",
             "type": "driver",
             "subType": "payment",
@@ -61,11 +61,52 @@
                         "max_length": 22
                     },
                     {
-                        "legend": "API Keys",
+                        "key": "sSupportedCurrency",
+                        "label": "Currency",
+                        "info": "Authorize.net accounts only support a single currency, specify it's code here, e.g. GBP, or USD",
+                        "max_length": 3
+                    },
+                    {
+                        "legend": "API Keys - Test",
+                        "fields": [
+                            {
+                                "key": "sLoginIdTest",
+                                "label": "Log-In ID",
+                                "type": "password",
+                                "encrypted": true
+                            },
+                            {
+                                "key": "sPublicKeyTest",
+                                "label": "Public Key",
+                                "type": "password",
+                                "encrypted": true
+                            },
+                            {
+                                "key": "sTransactionKeyTest",
+                                "label": "Transaction Key",
+                                "type": "password",
+                                "encrypted": true
+                            },
+                            {
+                                "key": "sSignatureKeyTest",
+                                "label": "Signature Key",
+                                "type": "password",
+                                "encrypted": true
+                            }
+                        ]
+                    },
+                    {
+                        "legend": "API Keys - Live",
                         "fields": [
                             {
                                 "key": "sLoginId",
                                 "label": "Log-In ID",
+                                "type": "password",
+                                "encrypted": true
+                            },
+                            {
+                                "key": "sPublicKey",
+                                "label": "Public Key",
                                 "type": "password",
                                 "encrypted": true
                             },

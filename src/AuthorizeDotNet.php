@@ -12,23 +12,41 @@
 
 namespace Nails\Invoice\Driver\Payment;
 
+use Nails\Common\Exception\NailsException;
+use Nails\Currency\Resource\Currency;
 use Nails\Environment;
 use Nails\Factory;
+use Nails\Invoice;
 use Nails\Invoice\Driver\Payment\AuthorizeDotNet\Constants;
 use Nails\Invoice\Driver\PaymentBase;
+use Nails\Invoice\Exception\ChargeRequestException;
 use Nails\Invoice\Exception\DriverException;
+use Nails\Invoice\Factory\ChargeRequest;
+use Nails\Invoice\Factory\ChargeResponse;
+use Nails\Invoice\Factory\CompleteResponse;
+use Nails\Invoice\Factory\RefundResponse;
+use Nails\Invoice\Factory\ScaResponse;
+use Nails\Invoice\Resource;
 use net\authorize\api\constants\ANetEnvironment as AuthNetConstants;
 use net\authorize\api\contract\v1 as AuthNetAPI;
 use net\authorize\api\controller as AuthNetController;
+use stdClass;
 
+/**
+ * Class AuthorizeDotNet
+ *
+ * @package Nails\Invoice\Driver\Payment
+ */
 class AuthorizeDotNet extends PaymentBase
 {
     /**
      * Returns whether the driver is available to be used against the selected invoice
      *
-     * @return boolean
+     * @param Resource\Invoice $oInvoice The invoice being charged
+     *
+     * @return bool
      */
-    public function isAvailable($oInvoice)
+    public function isAvailable(Resource\Invoice $oInvoice): bool
     {
         return true;
     }
@@ -36,11 +54,25 @@ class AuthorizeDotNet extends PaymentBase
     // --------------------------------------------------------------------------
 
     /**
+     * Returns the currencies which this driver supports, it will only be presented
+     * when attempting to pay an invoice in a supported currency
+     *
+     * @return string[]|null
+     */
+    public function getSupportedCurrencies(): ?array
+    {
+        $sCode = appSetting('sSupportedCurrency', 'nails/driver-invoice-authorize-net');
+        return $sCode ? [strtoupper($sCode)] : null;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
      * Returns whether the driver uses a redirect payment flow or not.
      *
-     * @return boolean
+     * @return bool
      */
-    public function isRedirect()
+    public function isRedirect(): bool
     {
         return false;
     }
@@ -51,7 +83,7 @@ class AuthorizeDotNet extends PaymentBase
      * Returns the payment fields the driver requires, use static::PAYMENT_FIELDS_CARD for basic credit
      * card details.
      *
-     * @return mixed
+     * @return array|string
      */
     public function getPaymentFields()
     {
@@ -61,34 +93,90 @@ class AuthorizeDotNet extends PaymentBase
     // --------------------------------------------------------------------------
 
     /**
+     * Returns any assets to load during checkout
+     *
+     * @return array
+     */
+    public function getCheckoutAssets(): array
+    {
+        return array_filter([
+            Environment::is(Environment::ENV_PROD) ? [
+                'https://js.authorize.net/v1/Accept.js',
+                null,
+                'JS',
+            ] : null,
+            Environment::not(Environment::ENV_PROD) ? [
+                'https://jstest.authorize.net/v1/Accept.js',
+                null,
+                'JS',
+            ] : null,
+            [
+                'checkout.min.js?' . implode('&', [
+                    'hash=' . urlencode(md5($this->getSlug())) . '',
+                    'key=' . urlencode($this->getEnvSetting('sPublicKey')) . '',
+                    'loginId=' . urlencode($this->getEnvSetting('sLoginId')) . '',
+                ]),
+                $this->getSlug(),
+                'JS',
+            ],
+        ]);
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Prepares a ChargeRequest object
+     *
+     * @param ChargeRequest $oChargeRequest The ChargeRequest object to prepare
+     * @param array         $aData          Any data which was requested by getPaymentFields()
+     *
+     * @throws ChargeRequestException
+     */
+    public function prepareChargeRequest(
+        ChargeRequest $oChargeRequest,
+        array $aData
+    ): void {
+        $this->setChargeRequestFields(
+            $oChargeRequest,
+            $aData,
+            [['key' => 'token']]
+        );
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
      * Initiate a payment
      *
-     * @param integer   $iAmount      The payment amount
-     * @param string    $sCurrency    The payment currency
-     * @param \stdClass $oData        The driver data object
-     * @param \stdClass $oCustomData  The custom data object
-     * @param string    $sDescription The charge description
-     * @param \stdClass $oPayment     The payment object
-     * @param \stdClass $oInvoice     The invoice object
-     * @param string    $sSuccessUrl  The URL to go to after successful payment
-     * @param string    $sFailUrl     The URL to go to after failed payment
-     * @param string    $sContinueUrl The URL to go to after payment is completed
+     * @param int                           $iAmount      The payment amount
+     * @param Currency                      $oCurrency    The payment currency
+     * @param stdClass                      $oData        An array of driver data
+     * @param Resource\Invoice\Data\Payment $oPaymentData The payment data object
+     * @param string                        $sDescription The charge description
+     * @param Resource\Payment              $oPayment     The payment object
+     * @param Resource\Invoice              $oInvoice     The invoice object
+     * @param string                        $sSuccessUrl  The URL to go to after successful payment
+     * @param string                        $sErrorUrl    The URL to go to after failed payment
+     * @param Resource\Source|null          $oSource      The saved payment source to use
      *
-     * @return \Nails\Invoice\Model\ChargeResponse
+     * @return ChargeResponse
      */
     public function charge(
-        $iAmount,
-        $sCurrency,
-        $oData,
-        $oCustomData,
-        $sDescription,
-        $oPayment,
-        $oInvoice,
-        $sSuccessUrl,
-        $sFailUrl,
-        $sContinueUrl
-    ) {
-        $oChargeResponse = Factory::factory('ChargeResponse', 'nails/module-invoice');
+        int $iAmount,
+        Currency $oCurrency,
+        stdClass $oData,
+        Resource\Invoice\Data\Payment $oPaymentData,
+        string $sDescription,
+        Resource\Payment $oPayment,
+        Resource\Invoice $oInvoice,
+        string $sSuccessUrl,
+        string $sErrorUrl,
+        bool $bCustomerPresent,
+        Resource\Source $oSource = null
+    ): ChargeResponse {
+
+        /** @var ChargeResponse $oChargeResponse */
+        $oChargeResponse = Factory::factory('ChargeResponse', Invoice\Constants::MODULE_SLUG);
 
         try {
 
@@ -105,23 +193,19 @@ class AuthorizeDotNet extends PaymentBase
              * any supplied card details.
              */
 
-            $sPaymentProfileId  = getFromArray('payment_profile_id', (array) $oCustomData);
-            $sCustomerProfileId = getFromArray('customer_profile_id', (array) $oCustomData);
-            $sCardNumber        = getFromArray('number', (array) $oData);
-            $oCardExpire        = getFromArray('exp', (array) $oData);
-            $sCardExpireMonth   = getFromArray('month', (array) $oCardExpire);
-            $sCardExpireYear    = getFromArray('year', (array) $oCardExpire);
-            $sCardCvc           = getFromArray('cvc', (array) $oData);
+            $sPaymentProfileId  = getFromArray('payment_profile_id', (array) $oPaymentData);
+            $sCustomerProfileId = getFromArray('customer_profile_id', (array) $oPaymentData);
+            $sToken             = getFromArray('token', (array) $oPaymentData);
 
             // --------------------------------------------------------------------------
 
             if ($sPaymentProfileId || $sCustomerProfileId) {
                 $this->payUsingProfile($oCharge, $sPaymentProfileId, $sCustomerProfileId);
             } else {
-                $this->payUsingCardDetails($oCharge, $sCardNumber, $sCardExpireMonth, $sCardExpireYear, $sCardCvc);
+                $this->payUsingToken($oCharge, $sToken);
             }
 
-            $oCharge->setCurrencyCode($sCurrency);
+            $oCharge->setCurrencyCode($oCurrency->code);
             $oCharge->setAmount($iAmount / 100);
             $oCharge->setOrder($oOrder);
 
@@ -191,7 +275,7 @@ class AuthorizeDotNet extends PaymentBase
 
                 } else {
                     $oChargeResponse->setStatusComplete();
-                    $oChargeResponse->setTxnId($oTransactionResponse->getTransId());
+                    $oChargeResponse->setTransactionId($oTransactionResponse->getTransId());
                     $oChargeResponse->setFee($this->calculateFee($iAmount));
                 }
 
@@ -236,18 +320,39 @@ class AuthorizeDotNet extends PaymentBase
     // --------------------------------------------------------------------------
 
     /**
+     * Handles any SCA requests
+     *
+     * @param ScaResponse $oScaResponse The SCA Response object
+     * @param array       $aData        Any saved SCA data
+     * @param string      $sSuccessUrl  The URL to redirect to after authorisation
+     *
+     * @return ScaResponse
+     */
+    public function sca(ScaResponse $oScaResponse, array $aData, string $sSuccessUrl): ScaResponse
+    {
+        //  SCA is not supported... yet
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
      * Complete the payment
      *
-     * @param \stdClass $oPayment  The Payment object
-     * @param \stdClass $oInvoice  The Invoice object
-     * @param array     $aGetVars  Any $_GET variables passed from the redirect flow
-     * @param array     $aPostVars Any $_POST variables passed from the redirect flow
+     * @param Resource\Payment $oPayment  The Payment object
+     * @param Resource\Invoice $oInvoice  The Invoice object
+     * @param array            $aGetVars  Any $_GET variables passed from the redirect flow
+     * @param array            $aPostVars Any $_POST variables passed from the redirect flow
      *
-     * @return \Nails\Invoice\Model\CompleteResponse
+     * @return CompleteResponse
      */
-    public function complete($oPayment, $oInvoice, $aGetVars, $aPostVars)
-    {
-        $oCompleteResponse = Factory::factory('CompleteResponse', 'nails/module-invoice');
+    public function complete(
+        Resource\Payment $oPayment,
+        Resource\Invoice $oInvoice,
+        array $aGetVars,
+        array $aPostVars
+    ): CompleteResponse {
+        /** @var CompleteResponse $oCompleteResponse */
+        $oCompleteResponse = Factory::factory('CompleteResponse', Invoice\Constants::MODULE_SLUG);
         $oCompleteResponse->setStatusComplete();
         return $oCompleteResponse;
     }
@@ -257,24 +362,33 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Issue a refund for a payment
      *
-     * @param string    $sTxnId      The original transaction's ID
-     * @param integer   $iAmount     The amount to refund
-     * @param string    $sCurrency   The currency in which to refund
-     * @param \stdClass $oCustomData The custom data object
-     * @param string    $sReason     The refund's reason
-     * @param \stdClass $oPayment    The payment object
-     * @param \stdClass $oInvoice    The invoice object
+     * @param string                        $sTransactionId The original transaction's ID
+     * @param int                           $iAmount        The amount to refund
+     * @param Currency                      $oCurrency      The currency in which to refund
+     * @param Resource\Invoice\Data\Payment $oPaymentData   The payment data object
+     * @param string                        $sReason        The refund's reason
+     * @param Resource\Payment              $oPayment       The payment object
+     * @param Resource\Invoice              $oInvoice       The invoice object
      *
-     * @return \Nails\Invoice\Model\RefundResponse
+     * @return RefundResponse
      */
-    public function refund($sTxnId, $iAmount, $sCurrency, $oCustomData, $sReason, $oPayment, $oInvoice)
-    {
-        $oRefundResponse = Factory::factory('RefundResponse', 'nails/module-invoice');
+    public function refund(
+        string $sTransactionId,
+        int $iAmount,
+        Currency $oCurrency,
+        Resource\Invoice\Data\Payment $oPaymentData,
+        string $sReason,
+        Resource\Payment $oPayment,
+        Resource\Invoice $oInvoice
+    ): RefundResponse {
+
+        /** @var RefundResponse $oRefundResponse */
+        $oRefundResponse = Factory::factory('RefundResponse', Invoice\Constants::MODULE_SLUG);
 
         try {
 
             //  Get the transaction details
-            $oTransactionDetails = $this->getTransactionDetails($sTxnId);
+            $oTransactionDetails = $this->getTransactionDetails($sTransactionId);
 
             // Create the payment data for a credit card
             $oCard = new AuthNetAPI\CreditCardType();
@@ -285,8 +399,8 @@ class AuthorizeDotNet extends PaymentBase
 
             $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('refundTransaction');
-            $oCharge->setRefTransId($sTxnId);
-            $oCharge->setCurrencyCode($sCurrency);
+            $oCharge->setRefTransId($sTransactionId);
+            $oCharge->setCurrencyCode($oCurrency->code);
             $oCharge->setAmount($iAmount / 100);
             $oCharge->setPayment($oPayment);
 
@@ -302,7 +416,7 @@ class AuthorizeDotNet extends PaymentBase
             if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
                 $oRefundResponse->setStatusComplete();
-                $oRefundResponse->setTxnId($oResponse->getTransactionResponse()->getTransId());
+                $oRefundResponse->setTransactionId($oResponse->getTransactionResponse()->getTransId());
                 //  @todo (Pablo - 2018-01-31) - Calculate refunded fee
                 //  $oRefundResponse->setFee($oStripeResponse->balance_transaction->fee * -1);
 
@@ -344,7 +458,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return string
      */
-    public function getApiMode()
+    public function getApiMode(): string
     {
         return Environment::is(Environment::ENV_PROD) ? AuthNetConstants::PRODUCTION : AuthNetConstants::SANDBOX;
     }
@@ -356,12 +470,30 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return AuthNetAPI\MerchantAuthenticationType
      */
-    public function getAuthentication()
+    public function getAuthentication(): AuthNetAPI\MerchantAuthenticationType
     {
         $oAuthentication = new AuthNetAPI\MerchantAuthenticationType();
-        $oAuthentication->setName($this->getSetting('sLoginId'));
-        $oAuthentication->setTransactionKey($this->getSetting('sTransactionKey'));
+        $oAuthentication->setName($this->getEnvSetting('sLoginId'));
+        $oAuthentication->setTransactionKey($this->getEnvSetting('sTransactionKey'));
         return $oAuthentication;
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Returns an environment orientated setting
+     *
+     * @param string|null $sProperty the proeprty to fetch
+     *
+     * @return mixed
+     */
+    protected function getEnvSetting(string $sProperty = null)
+    {
+        if (Environment::is(Environment::ENV_PROD)) {
+            return parent::getSetting($sProperty);
+        } else {
+            return parent::getSetting($sProperty . 'Test');
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -370,12 +502,12 @@ class AuthorizeDotNet extends PaymentBase
      * Complete the charge using an existing payment profile.
      *
      * @param AuthNetAPI\TransactionRequestType $oCharge     The Charge object
-     * @param integer                           $iProfileId  The Payment profile ID
-     * @param integer                           $iCustomerId The customer profile ID
+     * @param int                               $iProfileId  The Payment profile ID
+     * @param int                               $iCustomerId The customer profile ID
      *
      * @throws DriverException
      */
-    protected function payUsingProfile($oCharge, $iProfileId, $iCustomerId)
+    protected function payUsingProfile($oCharge, $iProfileId, $iCustomerId): void
     {
         if (empty($iProfileId)) {
             throw new DriverException('A Payment Profile ID must be supplied.');
@@ -398,35 +530,27 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Complete the charge using credit card details
      *
-     * @param AuthNetAPI\TransactionRequestType $oCharge          the Charge object
-     * @param string                            $sCardNumber      The Card's number
-     * @param integer                           $iCardExpireMonth The Card's expiry month
-     * @param integer                           $iCardExpireYear  The Card's expiry year
-     * @param string                            $sCardCvc         The Card's CVC
+     * @param AuthNetAPI\TransactionRequestType $oCharge The Charge object
+     * @param string                            $sToken  The payment token
      *
      * @throws DriverException
      */
-    protected function payUsingCardDetails($oCharge, $sCardNumber, $iCardExpireMonth, $iCardExpireYear, $sCardCvc)
+    protected function payUsingToken($oCharge, $sToken): void
     {
-        $sCardNumber = preg_replace('/[^\d]/', '', $sCardNumber);
+        $oToken = json_decode($sToken);
 
-        if (empty($sCardNumber)) {
-            throw new DriverException('Card number must be supplied.');
-        } elseif (empty($iCardExpireMonth)) {
-            throw new DriverException('Card expiry month must be supplied.');
-        } elseif (empty($iCardExpireYear)) {
-            throw new DriverException('Card expiry year must be supplied.');
-        } elseif (empty($sCardCvc)) {
-            throw new DriverException('Card CVC number must be supplied.');
+        if (empty($oToken->dataDescriptor)) {
+            throw new DriverException('Token must contain a dataDescriptor property.');
+        } elseif (empty($oToken->dataValue)) {
+            throw new DriverException('Token must contain a dataValue property.');
         }
 
-        $oCreditCard = new AuthNetAPI\CreditCardType();
-        $oCreditCard->setCardNumber($sCardNumber);
-        $oCreditCard->setExpirationDate($iCardExpireYear . '-' . $iCardExpireMonth);
-        $oCreditCard->setCardCode($sCardCvc);
+        $oOpaqueData = new AuthNetAPI\OpaqueDataType();
+        $oOpaqueData->setDataDescriptor($oToken->dataDescriptor);
+        $oOpaqueData->setDataValue($oToken->dataValue);
 
         $oPayment = new AuthNetAPI\PaymentType();
-        $oPayment->setCreditCard($oCreditCard);
+        $oPayment->setOpaqueData($oOpaqueData);
 
         $oCharge->setPayment($oPayment);
     }
@@ -436,11 +560,11 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Calculates the transaction fee
      *
-     * @param integer $iAmount The value of the transaction
+     * @param int $iAmount The value of the transaction
      *
      * @return int
      */
-    protected function calculateFee($iAmount)
+    protected function calculateFee($iAmount): int
     {
         $iFixedFee      = (int) $this->getSetting('iPerTransactionFee');
         $fPercentageFee = (float) $this->getSetting('iPerTransactionPercentage');
@@ -452,16 +576,16 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Queries Authorize.Net for details about a transaction
      *
-     * @param string $sTxnId The original transaction ID
+     * @param string $sTransactionId The original transaction ID
      *
-     * @return \stdClass
+     * @return stdClass
      * @throws DriverException
      */
-    protected function getTransactionDetails($sTxnId)
+    protected function getTransactionDetails($sTransactionId): stdClass
     {
         $oApiRequest = new AuthNetAPI\GetTransactionDetailsRequest();
         $oApiRequest->setMerchantAuthentication($this->getAuthentication());
-        $oApiRequest->setTransId($sTxnId);
+        $oApiRequest->setTransId($sTransactionId);
 
         $oApiController = new AuthNetController\GetTransactionDetailsController($oApiRequest);
         $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
@@ -485,5 +609,23 @@ class AuthorizeDotNet extends PaymentBase
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Creates a new payment source, returns a semi-populated source resource
+     *
+     * @param Resource\Source $oResource The Resouce object to update
+     * @param array           $aData     Data passed from the caller
+     *
+     * @throws DriverException
+     */
+    public function createSource(
+        Resource\Source &$oResource,
+        array $aData
+    ): void {
+        //  @todo (Pablo - 2019-09-05) - implement this
+        throw new NailsException('Method not implemented');
     }
 }
