@@ -628,4 +628,161 @@ class AuthorizeDotNet extends PaymentBase
         //  @todo (Pablo - 2019-09-05) - implement this
         throw new NailsException('Method not implemented');
     }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Convinience method for creating a new customer on the gateway
+     *
+     * @param array $aData The driver specific customer data
+     *
+     * @return AuthNetAPI\CustomerProfileMaskedType
+     * @throws DriverException
+     */
+    public function createCustomer(array $aData = []): AuthNetAPI\CustomerProfileMaskedType
+    {
+        if (empty($aData['merchant_customer_id']) && empty($aData['email']) && empty($aData['description'])) {
+            throw new DriverException(
+                'At least one must be supplied: "merchant_customer_id", "email", "description"'
+            );
+        }
+
+        $oProfile = new AuthNetAPI\CustomerProfileType();
+        if (array_key_exists('merchant_customer_id', $aData)) {
+            $oProfile->setMerchantCustomerId($aData['merchant_customer_id']);
+        }
+        if (array_key_exists('email', $aData)) {
+            $oProfile->setEmail($aData['email']);
+        }
+        if (array_key_exists('description', $aData)) {
+            $oProfile->setEmail($aData['description']);
+        }
+        if (array_key_exists('payment_profiles', $aData)) {
+            $oProfile->setPaymentProfiles($aData['payment_profiles']);
+        }
+        if (array_key_exists('shipping_profiles', $aData)) {
+            $oProfile->setShipToList($aData['shipping_profiles']);
+        }
+
+        $oApiRequest = new AuthNetAPI\CreateCustomerProfileRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setProfile($oProfile);
+
+        $oApiController = new AuthNetController\CreateCustomerProfileController($oApiRequest);
+        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+
+            return $this->getCustomer($oResponse->getCustomerProfileId());
+
+        } else {
+            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Convinience method for retrieving an existing customer from the gateway
+     *
+     * @param mixed $mCustomerId The gateway's customer ID
+     * @param array $aData       Any driver specific data
+     *
+     * @return AuthNetAPI\CustomerProfileMaskedType
+     * @throws DriverException
+     */
+    public function getCustomer($mCustomerId, array $aData = []): AuthNetAPI\CustomerProfileMaskedType
+    {
+        $oApiRequest = new AuthNetAPI\GetCustomerProfileRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setCustomerProfileId($mCustomerId);
+
+        $oApiController = new AuthNetController\GetCustomerProfileController($oApiRequest);
+        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+
+            return $oResponse->getProfile();
+
+        } else {
+            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Convinience method for updating an existing customer on the gateway
+     *
+     * @param mixed $mCustomerId The gateway's customer ID
+     * @param array $aData       The driver specific customer data
+     *
+     * @return AuthNetAPI\CustomerProfileMaskedType
+     * @throws DriverException
+     */
+    public function updateCustomer($mCustomerId, array $aData = []): AuthNetAPI\CustomerProfileMaskedType
+    {
+        $oProfile = new AuthNetAPI\CustomerProfileExType();
+        $oProfile->setCustomerProfileId($mCustomerId);
+
+        if (array_key_exists('merchant_customer_id', $aData)) {
+            $oProfile->setMerchantCustomerId($aData['merchant_customer_id']);
+        }
+        if (array_key_exists('email', $aData)) {
+            $oProfile->setEmail($aData['email']);
+        }
+        if (array_key_exists('description', $aData)) {
+            $oProfile->setEmail($aData['description']);
+        }
+        if (array_key_exists('payment_profiles', $aData)) {
+            $oProfile->setPaymentProfiles($aData['payment_profiles']);
+        }
+        if (array_key_exists('shipping_profiles', $aData)) {
+            $oProfile->setShipToList($aData['shipping_profiles']);
+        }
+
+        $oApiRequest = new AuthNetAPI\UpdateCustomerProfileRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setProfile($oProfile);
+
+        $oApiController = new AuthNetController\UpdateCustomerProfileController($oApiRequest);
+        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+
+            return $this->getCustomer($mCustomerId);
+
+        } else {
+            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Convinience method for deleting an existing customer on the gateway
+     *
+     * @param mixed $mCustomerId The gateway's customer ID
+     */
+    public function deleteCustomer($mCustomerId): void
+    {
+        $oApiRequest = new AuthNetAPI\DeleteCustomerProfileRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setCustomerProfileId($mCustomerId);
+
+        $oApiController = new AuthNetController\CreateCustomerProfileController($oApiRequest);
+        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oResponse->getMessages()->getResultCode() !== Constants::API_RESPONSE_OK) {
+            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
+    }
 }
