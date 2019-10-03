@@ -406,7 +406,7 @@ class AuthorizeDotNet extends PaymentBase
 
             $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
             $oApiRequest->setMerchantAuthentication($this->getAuthentication());
-            //  @todo (Pablo - 2018-01-31) - set this to the ID fo the refund object
+            //  @todo (Pablo - 2018-01-31) - set this to the ID of the refund object
             //  $oApiRequest->setRefId(null);
             $oApiRequest->setTransactionRequest($oCharge);
 
@@ -625,8 +625,79 @@ class AuthorizeDotNet extends PaymentBase
         Resource\Source &$oResource,
         array $aData
     ): void {
-        //  @todo (Pablo - 2019-09-05) - implement this
-        throw new NailsException('Method not implemented');
+
+        //  Required values
+        $sCustomerProfileId = getFromArray('customer_profile_id', $aData);
+        $sDataDescriptor    = getFromArray('data_descriptor', $aData);
+        $sDataValue         = getFromArray('data_value', $aData);
+        $sBrand             = getFromArray('brand', $aData);
+        $sLastFour          = getFromArray('last_four', $aData);
+        $sExpiry            = getFromArray('expiry', $aData);
+
+        //  Optional values
+        $sName = getFromArray('name', $aData);
+
+        if (empty($sCustomerProfileId)) {
+            throw new DriverException(
+                '"customer_profile_id" must be supplied when creating an Authorize.NET payment source.'
+            );
+        } elseif (empty($sDataDescriptor)) {
+            throw new DriverException(
+                '"data_descriptor" must be supplied when creating an Authorize.NET payment source.'
+            );
+        } elseif (empty($sDataValue)) {
+            throw new DriverException(
+                '"data_value" must be supplied when creating an Authorize.NET payment source.'
+            );
+        } elseif (empty($sBrand)) {
+            throw new DriverException(
+                '"brand" must be supplied when creating an Authorize.NET payment source.'
+            );
+        } elseif (empty($sLastFour)) {
+            throw new DriverException(
+                '"last_four" must be supplied when creating an Authorize.NET payment source.'
+            );
+        } elseif (empty($sExpiry)) {
+            throw new DriverException(
+                '"expiry" must be supplied when creating an Authorize.NET payment source.'
+            );
+        }
+
+        $oPaymentData = new AuthNetAPI\OpaqueDataType();
+        $oPaymentData->setDataDescriptor($sDataDescriptor);
+        $oPaymentData->setDataValue($sDataValue);
+
+        $oPaymentSource = new AuthNetAPI\PaymentType();
+        $oPaymentSource->setOpaqueData($oPaymentData);
+
+        $oPaymentProfile = new AuthNetAPI\CustomerPaymentProfileType();
+        $oPaymentProfile->setCustomerType('individual');
+        $oPaymentProfile->setPayment($oPaymentSource);
+
+        $oApiRequest = new AuthNetAPI\CreateCustomerPaymentProfileRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setCustomerProfileId($sCustomerProfileId);
+        $oApiRequest->setPaymentProfile($oPaymentProfile);
+
+        $oApiController = new AuthNetController\CreateCustomerPaymentProfileController($oApiRequest);
+        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+
+            $oResource->name      = $sName;
+            $oResource->brand     = $sBrand;
+            $oResource->last_four = $sLastFour;
+            $oResource->expiry    = $sExpiry;
+            $oResource->data      = json_encode([
+                'payment_profile_id'  => $oResponse->getCustomerPaymentProfileId(),
+                'customer_profile_id' => $sCustomerProfileId,
+            ]);
+
+        } else {
+            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
     }
 
     // --------------------------------------------------------------------------
