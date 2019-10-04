@@ -12,7 +12,6 @@
 
 namespace Nails\Invoice\Driver\Payment;
 
-use Nails\Common\Exception\NailsException;
 use Nails\Currency\Resource\Currency;
 use Nails\Environment;
 use Nails\Factory;
@@ -188,21 +187,52 @@ class AuthorizeDotNet extends PaymentBase
             $oOrder = new AuthNetAPI\OrderType();
             $oOrder->setInvoiceNumber($oInvoice->ref);
 
-            /**
-             * If a payment_profile_id or customer_profile_id has been supplied then use these over
-             * any supplied card details.
-             */
+            if (null !== $oSource) {
 
-            $sPaymentProfileId  = getFromArray('payment_profile_id', (array) $oPaymentData);
-            $sCustomerProfileId = getFromArray('customer_profile_id', (array) $oPaymentData);
-            $sToken             = getFromArray('token', (array) $oPaymentData);
+                /**
+                 * The customer is checking out using a saved payment source
+                 */
+                $aSourceData        = json_decode($oSource->data, JSON_OBJECT_AS_ARRAY) ?? [];
+                $iPaymentProfileId  = getFromArray('payment_profile_id', $aSourceData);
+                $iCustomerProfileId = getFromArray('customer_profile_id', $aSourceData);
 
-            // --------------------------------------------------------------------------
+                if (empty($iPaymentProfileId)) {
+                    throw new DriverException('Could not ascertain the "source_id" from the Source object.');
+                } elseif (empty($iCustomerProfileId)) {
+                    throw new DriverException('Could not ascertain the "customer_id" from the Source object.');
+                }
 
-            if ($sPaymentProfileId || $sCustomerProfileId) {
-                $this->payUsingProfile($oCharge, $sPaymentProfileId, $sCustomerProfileId);
+                $this->payUsingProfile(
+                    $oCharge,
+                    $iPaymentProfileId,
+                    $iCustomerProfileId
+                );
+
+            } elseif (property_exists($oPaymentData, 'token')) {
+
+                /**
+                 * The customer is checking out using an Authorize.NET token
+                 */
+                $this->payUsingToken(
+                    $oCharge,
+                    $oPaymentData->token
+                );
+
+            } elseif (property_exists($oPaymentData, 'payment_profile_id') && property_exists($oPaymentData, 'customer_profile_id')) {
+
+                /**
+                 * Dev has passed explicit stripe source and customer IDs
+                 */
+                $this->payUsingProfile(
+                    $oCharge,
+                    $oPaymentData->payment_profile_id,
+                    $oPaymentData->customer_profile_id
+                );
+
             } else {
-                $this->payUsingToken($oCharge, $sToken);
+                throw new DriverException(
+                    'Must provide a payment source, `token` or `payment_profile_id` and `customer_profile_id`.'
+                );
             }
 
             $oCharge->setCurrencyCode($oCurrency->code);
@@ -507,8 +537,12 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @throws DriverException
      */
-    protected function payUsingProfile($oCharge, $iProfileId, $iCustomerId): void
-    {
+    protected function payUsingProfile(
+        AuthNetAPI\TransactionRequestType $oCharge,
+        int $iProfileId,
+        int $iCustomerId
+    ): void {
+
         if (empty($iProfileId)) {
             throw new DriverException('A Payment Profile ID must be supplied.');
         } elseif (empty($iCustomerId)) {
@@ -535,8 +569,11 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @throws DriverException
      */
-    protected function payUsingToken($oCharge, $sToken): void
-    {
+    protected function payUsingToken(
+        AuthNetAPI\TransactionRequestType $oCharge,
+        string $sToken
+    ): void {
+
         $oToken = json_decode($sToken);
 
         if (empty($oToken->dataDescriptor)) {
