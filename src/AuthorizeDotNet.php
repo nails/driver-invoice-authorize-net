@@ -192,9 +192,8 @@ class AuthorizeDotNet extends PaymentBase
                 /**
                  * The customer is checking out using a saved payment source
                  */
-                $aSourceData        = json_decode($oSource->data, JSON_OBJECT_AS_ARRAY) ?? [];
-                $iPaymentProfileId  = getFromArray('payment_profile_id', $aSourceData);
-                $iCustomerProfileId = getFromArray('customer_profile_id', $aSourceData);
+                $iPaymentProfileId  = getFromArray('payment_profile_id', (array) $oSource->data);
+                $iCustomerProfileId = getFromArray('customer_profile_id', (array) $oSource->data);
 
                 if (empty($iPaymentProfileId)) {
                     throw new DriverException('Could not ascertain the "source_id" from the Source object.');
@@ -670,33 +669,41 @@ class AuthorizeDotNet extends PaymentBase
         $sBrand             = getFromArray('brand', $aData);
         $sLastFour          = getFromArray('last_four', $aData);
         $sExpiry            = getFromArray('expiry', $aData);
+        $sFirstName         = getFromArray('first_name', $aData);
+        $sLastName          = getFromArray('last_name', $aData);
 
-        //  Optional values
-        $sName = getFromArray('name', $aData);
-
+        $aErrors = [];
         if (empty($sCustomerProfileId)) {
+            $aErrors[] = 'customer_profile_id';
+        }
+        if (empty($sDataDescriptor)) {
+            $aErrors[] = 'data_descriptor';
+        }
+        if (empty($sDataValue)) {
+            $aErrors[] = 'data_value';
+        }
+        if (empty($sBrand)) {
+            $aErrors[] = 'brand';
+        }
+        if (empty($sLastFour)) {
+            $aErrors[] = 'last_four';
+        }
+        if (empty($sExpiry)) {
+            $aErrors[] = 'expiry';
+        }
+        if (empty($sFirstName)) {
+            $aErrors[] = 'first_name';
+        }
+        if (empty($sLastName)) {
+            $aErrors[] = 'last_name';
+        }
+
+        if (!empty($aErrors)) {
+            $sError = '"' . implode('", "', $aErrors) . '""';
+            $sError = replaceLastOccurrence(',', ' and', $sError);
+
             throw new DriverException(
-                '"customer_profile_id" must be supplied when creating an Authorize.NET payment source.'
-            );
-        } elseif (empty($sDataDescriptor)) {
-            throw new DriverException(
-                '"data_descriptor" must be supplied when creating an Authorize.NET payment source.'
-            );
-        } elseif (empty($sDataValue)) {
-            throw new DriverException(
-                '"data_value" must be supplied when creating an Authorize.NET payment source.'
-            );
-        } elseif (empty($sBrand)) {
-            throw new DriverException(
-                '"brand" must be supplied when creating an Authorize.NET payment source.'
-            );
-        } elseif (empty($sLastFour)) {
-            throw new DriverException(
-                '"last_four" must be supplied when creating an Authorize.NET payment source.'
-            );
-        } elseif (empty($sExpiry)) {
-            throw new DriverException(
-                '"expiry" must be supplied when creating an Authorize.NET payment source.'
+                $sError . ' must be supplied when creating an Authorize.NET payment source.'
             );
         }
 
@@ -707,9 +714,14 @@ class AuthorizeDotNet extends PaymentBase
         $oPaymentSource = new AuthNetAPI\PaymentType();
         $oPaymentSource->setOpaqueData($oPaymentData);
 
+        $oBillto = new AuthNetAPI\CustomerAddressType();
+        $oBillto->setFirstName($sFirstName);
+        $oBillto->setLastName($sLastName);
+
         $oPaymentProfile = new AuthNetAPI\CustomerPaymentProfileType();
         $oPaymentProfile->setCustomerType('individual');
         $oPaymentProfile->setPayment($oPaymentSource);
+        $oPaymentProfile->setBillTo($oBillto);
 
         $oApiRequest = new AuthNetAPI\CreateCustomerPaymentProfileRequest();
         $oApiRequest->setMerchantAuthentication($this->getAuthentication());
@@ -721,14 +733,14 @@ class AuthorizeDotNet extends PaymentBase
 
         if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-            $oResource->name      = $sName;
+            $oResource->name      = trim($sFirstName . ' ' . $sLastName);
             $oResource->brand     = $sBrand;
             $oResource->last_four = $sLastFour;
             $oResource->expiry    = $sExpiry;
-            $oResource->data      = json_encode([
+            $oResource->data      = (object) [
                 'payment_profile_id'  => $oResponse->getCustomerPaymentProfileId(),
                 'customer_profile_id' => $sCustomerProfileId,
-            ]);
+            ];
 
         } else {
             $aGeneralErrors = $oResponse->getMessages()->getMessage();
