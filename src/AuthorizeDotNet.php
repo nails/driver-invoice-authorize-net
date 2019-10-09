@@ -244,17 +244,17 @@ class AuthorizeDotNet extends PaymentBase
             $oApiRequest->setTransactionRequest($oCharge);
 
             $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
-            $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+            $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-            if ($oResponse === null) {
+            if ($oApiResponse === null) {
                 throw new DriverException(
                     'Received a null response from the payment gateway.'
                 );
             }
 
-            if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+            if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-                $oTransactionResponse = $oResponse->getTransactionResponse();
+                $oTransactionResponse = $oApiResponse->getTransactionResponse();
                 $aErrors              = $oTransactionResponse->getErrors() ?? [];
 
                 if ($oTransactionResponse === null) {
@@ -310,12 +310,12 @@ class AuthorizeDotNet extends PaymentBase
 
             } else {
 
-                $aGeneralErrors = $oResponse->getMessages()->getMessage();
+                $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
                 $oGeneralError  = reset($aGeneralErrors);
                 $sSpecificError = '';
 
-                if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
-                    $aErrors = $oResponse->getTransactionResponse()->getErrors();
+                if (is_callable([$oApiResponse->getTransactionResponse(), 'getErrors'])) {
+                    $aErrors = $oApiResponse->getTransactionResponse()->getErrors();
                     $oError  = reset($aErrors);
                     if (!empty($oError)) {
                         $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
@@ -440,22 +440,22 @@ class AuthorizeDotNet extends PaymentBase
             $oApiRequest->setTransactionRequest($oCharge);
 
             $oApiController = new AuthNetController\CreateTransactionController($oApiRequest);
-            $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+            $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-            if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+            if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
                 $oRefundResponse->setStatusComplete();
-                $oRefundResponse->setTransactionId($oResponse->getTransactionResponse()->getTransId());
+                $oRefundResponse->setTransactionId($oApiResponse->getTransactionResponse()->getTransId());
                 //  @todo (Pablo - 2018-01-31) - Calculate refunded fee
                 //  $oRefundResponse->setFee($oStripeResponse->balance_transaction->fee * -1);
 
             } else {
 
-                $aGeneralErrors = $oResponse->getMessages()->getMessage();
+                $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
                 $oGeneralError  = reset($aGeneralErrors);
                 $sSpecificError = '';
-                if (is_callable([$oResponse->getTransactionResponse(), 'getErrors'])) {
-                    $aErrors = $oResponse->getTransactionResponse()->getErrors();
+                if (is_callable([$oApiResponse->getTransactionResponse(), 'getErrors'])) {
+                    $aErrors = $oApiResponse->getTransactionResponse()->getErrors();
                     $oError  = reset($aErrors);
                     if (!empty($oError)) {
                         $sSpecificError = ' ( ' . $oError->getErrorCode() . ': ' . $oError->getErrorText() . ')';
@@ -624,11 +624,11 @@ class AuthorizeDotNet extends PaymentBase
         $oApiRequest->setTransId($sTransactionId);
 
         $oApiController = new AuthNetController\GetTransactionDetailsController($oApiRequest);
-        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+        $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+        if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-            $oTransaction = $oResponse->getTransaction();
+            $oTransaction = $oApiResponse->getTransaction();
             $oPayment     = $oTransaction->getPayment();
             $oCard        = $oPayment->getCreditCard();
 
@@ -641,7 +641,7 @@ class AuthorizeDotNet extends PaymentBase
             ];
 
         } else {
-            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
@@ -650,7 +650,7 @@ class AuthorizeDotNet extends PaymentBase
     // --------------------------------------------------------------------------
 
     /**
-     * Creates a new payment source, returns a semi-populated source resource
+     * Creates a new payment source on the gateway, semi-populates the source resource with data
      *
      * @param Resource\Source $oResource The Resouce object to update
      * @param array           $aData     Data passed from the caller
@@ -666,11 +666,10 @@ class AuthorizeDotNet extends PaymentBase
         $sCustomerProfileId = getFromArray('customer_profile_id', $aData);
         $sDataDescriptor    = getFromArray('data_descriptor', $aData);
         $sDataValue         = getFromArray('data_value', $aData);
-        $sBrand             = getFromArray('brand', $aData);
+        $sBrand             = trim(getFromArray('brand', $aData));
         $sLastFour          = getFromArray('last_four', $aData);
         $sExpiry            = getFromArray('expiry', $aData);
-        $sFirstName         = getFromArray('first_name', $aData);
-        $sLastName          = getFromArray('last_name', $aData);
+        $sName              = trim(getFromArray('name', $aData));
 
         $aErrors = [];
         if (empty($sCustomerProfileId)) {
@@ -691,11 +690,8 @@ class AuthorizeDotNet extends PaymentBase
         if (empty($sExpiry)) {
             $aErrors[] = 'expiry';
         }
-        if (empty($sFirstName)) {
-            $aErrors[] = 'first_name';
-        }
-        if (empty($sLastName)) {
-            $aErrors[] = 'last_name';
+        if (empty($sName)) {
+            $aErrors[] = 'name';
         }
 
         if (!empty($aErrors)) {
@@ -707,6 +703,8 @@ class AuthorizeDotNet extends PaymentBase
             );
         }
 
+        list($sTitle, $sFirstName, $sLastName) = $this->getNameParts($sName);
+
         $oPaymentData = new AuthNetAPI\OpaqueDataType();
         $oPaymentData->setDataDescriptor($sDataDescriptor);
         $oPaymentData->setDataValue($sDataValue);
@@ -715,7 +713,7 @@ class AuthorizeDotNet extends PaymentBase
         $oPaymentSource->setOpaqueData($oPaymentData);
 
         $oBillto = new AuthNetAPI\CustomerAddressType();
-        $oBillto->setFirstName($sFirstName);
+        $oBillto->setFirstName(trim($sTitle . ' ' . $sFirstName));
         $oBillto->setLastName($sLastName);
 
         $oPaymentProfile = new AuthNetAPI\CustomerPaymentProfileType();
@@ -729,21 +727,147 @@ class AuthorizeDotNet extends PaymentBase
         $oApiRequest->setPaymentProfile($oPaymentProfile);
 
         $oApiController = new AuthNetController\CreateCustomerPaymentProfileController($oApiRequest);
-        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+        $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+        if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-            $oResource->name      = trim($sFirstName . ' ' . $sLastName);
+            $oResource->name      = $sName;
             $oResource->brand     = $sBrand;
             $oResource->last_four = $sLastFour;
             $oResource->expiry    = $sExpiry;
             $oResource->data      = (object) [
-                'payment_profile_id'  => $oResponse->getCustomerPaymentProfileId(),
+                'payment_profile_id'  => $oApiResponse->getCustomerPaymentProfileId(),
                 'customer_profile_id' => $sCustomerProfileId,
             ];
 
         } else {
-            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Updates a payment source on the gateway
+     *
+     * @param Resource\Source $oResource The Resource being updated
+     *
+     * @throws DriverException
+     */
+    public function updateSource(
+        Resource\Source $oResource
+    ): void {
+
+        if (!property_exists($oResource->data, 'payment_profile_id')) {
+            throw new DriverException(
+                'Cannot delete remote source, object is malformed (missing "payment_profile_id")'
+            );
+        } elseif (!property_exists($oResource->data, 'customer_profile_id')) {
+            throw new DriverException(
+                'Cannot delete remote source, object is malformed (missing "customer_profile_id")'
+            );
+        }
+
+        $oApiRequest = new AuthNetAPI\GetCustomerPaymentProfileRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setCustomerPaymentProfileId($oResource->data->payment_profile_id);
+        $oApiRequest->setCustomerProfileId($oResource->data->customer_profile_id);
+
+        $oApiController = new AuthNetController\GetCustomerPaymentProfileController($oApiRequest);
+        /** @var AuthNetAPI\GetCustomerPaymentProfileResponse $oApiResponse */
+        $oApiResponse = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+
+            list($sTitle, $sFirstName, $sLastName) = $this->getNameParts($oResource->name);
+
+            //  We have the existing card, submit an update request
+            $oBillTo = $oApiResponse->getPaymentProfile()->getBillTo();
+            $oBillTo->setFirstName(trim($sTitle . ' ' . $sFirstName));
+            $oBillTo->setLastName($sLastName);
+
+            $oCreditCard = new AuthNetAPI\CreditCardType();
+            $oCreditCard->setCardNumber(
+                $oApiResponse
+                    ->getPaymentProfile()
+                    ->getPayment()
+                    ->getCreditCard()
+                    ->getCardNumber()
+            );
+            if (is_string($oResource->expiry)) {
+                $oExpiry = new \DateTime($oResource->expiry);
+                $oCreditCard->setExpirationDate($oExpiry->format('Y-m'));
+            } else {
+                $oCreditCard->setExpirationDate($oResource->expiry->format('Y-m'));
+            }
+
+            $oPayment = new AuthNetAPI\PaymentType();
+            $oPayment->setCreditCard($oCreditCard);
+
+            $oPaymentprofile = new AuthNetAPI\CustomerPaymentProfileExType();
+            $oPaymentprofile->setBillTo($oBillTo);
+            $oPaymentprofile->setCustomerPaymentProfileId($oResource->data->payment_profile_id);
+            $oPaymentprofile->setPayment($oPayment);
+
+            // Submit a UpdatePaymentProfileRequest
+            $oApiRequest = new AuthNetAPI\UpdateCustomerPaymentProfileRequest();
+            $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+            $oApiRequest->setCustomerProfileId($oResource->data->customer_profile_id);
+            $oApiRequest->setPaymentProfile($oPaymentprofile);
+
+            $oApiController = new AuthNetController\UpdateCustomerPaymentProfileController($oApiRequest);
+            /** @var AuthNetAPI\UpdateCustomerPaymentProfileResponse $oApiResponse */
+            $oApiResponse = $oApiController->executeWithApiResponse($this->getApiMode());
+
+            if ($oApiResponse->getMessages()->getResultCode() !== Constants::API_RESPONSE_OK) {
+                $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
+                $oGeneralError  = reset($aGeneralErrors);
+                throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+            }
+
+        } else {
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
+            $oGeneralError  = reset($aGeneralErrors);
+            throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
+        }
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Deletes a payment source from the gateway
+     *
+     * @param Resource\Source $oResource The Resource being deleted
+     *
+     * @throws DriverException
+     */
+    public function deleteSource(
+        Resource\Source $oResource
+    ): void {
+
+        if (!property_exists($oResource->data, 'payment_profile_id')) {
+            throw new DriverException(
+                'Cannot delete remote source, object is malformed (missing "payment_profile_id")'
+            );
+        } elseif (!property_exists($oResource->data, 'customer_profile_id')) {
+            throw new DriverException(
+                'Cannot delete remote source, object is malformed (missing "customer_profile_id")'
+            );
+        }
+
+        $oApiRequest = new AuthNetAPI\DeleteCustomerPaymentProfileRequest();
+        $oApiRequest->setMerchantAuthentication($this->getAuthentication());
+        $oApiRequest->setCustomerPaymentProfileId($oResource->data->payment_profile_id);
+        $oApiRequest->setCustomerProfileId($oResource->data->customer_profile_id);
+
+        $oApiController = new AuthNetController\DeleteCustomerPaymentProfileController($oApiRequest);
+        /** @var AuthNetAPI\DeleteCustomerPaymentProfileResponse $oApiResponse */
+        $oApiResponse = $oApiController->executeWithApiResponse($this->getApiMode());
+
+        if ($oApiResponse->getMessages()->getResultCode() !== Constants::API_RESPONSE_OK) {
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
@@ -789,14 +913,14 @@ class AuthorizeDotNet extends PaymentBase
         $oApiRequest->setProfile($oProfile);
 
         $oApiController = new AuthNetController\CreateCustomerProfileController($oApiRequest);
-        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+        $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+        if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-            return $this->getCustomer($oResponse->getCustomerProfileId());
+            return $this->getCustomer($oApiResponse->getCustomerProfileId());
 
         } else {
-            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
@@ -820,14 +944,14 @@ class AuthorizeDotNet extends PaymentBase
         $oApiRequest->setCustomerProfileId($mCustomerId);
 
         $oApiController = new AuthNetController\GetCustomerProfileController($oApiRequest);
-        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+        $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+        if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-            return $oResponse->getProfile();
+            return $oApiResponse->getProfile();
 
         } else {
-            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
@@ -870,14 +994,14 @@ class AuthorizeDotNet extends PaymentBase
         $oApiRequest->setProfile($oProfile);
 
         $oApiController = new AuthNetController\UpdateCustomerProfileController($oApiRequest);
-        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+        $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-        if ($oResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
+        if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
             return $this->getCustomer($mCustomerId);
 
         } else {
-            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
@@ -897,12 +1021,47 @@ class AuthorizeDotNet extends PaymentBase
         $oApiRequest->setCustomerProfileId($mCustomerId);
 
         $oApiController = new AuthNetController\CreateCustomerProfileController($oApiRequest);
-        $oResponse      = $oApiController->executeWithApiResponse($this->getApiMode());
+        $oApiResponse   = $oApiController->executeWithApiResponse($this->getApiMode());
 
-        if ($oResponse->getMessages()->getResultCode() !== Constants::API_RESPONSE_OK) {
-            $aGeneralErrors = $oResponse->getMessages()->getMessage();
+        if ($oApiResponse->getMessages()->getResultCode() !== Constants::API_RESPONSE_OK) {
+            $aGeneralErrors = $oApiResponse->getMessages()->getMessage();
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Attempts to dissect a name into it's distinct parts
+     *
+     * @param $sName The name to dissect
+     *
+     * @return array
+     */
+    protected function getNameParts($sName)
+    {
+        if (preg_match('/^((m(r|s|rs|x|iss))|dr|master|sir|lady|madam|dame|lord|esq) /i', $sName)) {
+
+            list($sTitle, $sFirstName, $sLastName) = array_pad(explode(' ', $sName, 3), 3, null);
+
+            if (empty($sLastNfame)) {
+                //  This supports "Mrs Test" type scenarios
+                $sLastName  = $sFirstName;
+                $sFirstName = $sTitle;
+            } else {
+                $sFirstName = trim($sTitle . ' ' . $sFirstName);
+            }
+
+        } else {
+            $sTitle = null;
+            list($sFirstName, $sLastName) = array_pad(explode(' ', $sName, 2), 2, null);
+        }
+
+        return [
+            $sTitle,
+            $sFirstName,
+            $sLastName,
+        ];
     }
 }
