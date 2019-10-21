@@ -419,10 +419,15 @@ class AuthorizeDotNet extends PaymentBase
             //  Get the transaction details
             $oTransactionDetails = $this->getTransactionDetails($sTransactionId);
 
-            // Create the payment data for a credit card
+            //  Create order information
+            $oOrder = new AuthNetAPI\OrderType();
+            $oOrder->setInvoiceNumber($oInvoice->ref);
+
+            //  Create the payment data for a credit card
             $oCard = new AuthNetAPI\CreditCardType();
             $oCard->setCardNumber($oTransactionDetails->card->last4);
             $oCard->setExpirationDate('XXXX'); //  This is deliberate
+
             $oPayment = new AuthNetAPI\PaymentType();
             $oPayment->setCreditCard($oCard);
 
@@ -432,6 +437,7 @@ class AuthorizeDotNet extends PaymentBase
             $oCharge->setCurrencyCode($oCurrency->code);
             $oCharge->setAmount($iAmount / 100);
             $oCharge->setPayment($oPayment);
+            $oCharge->setOrder($oOrder);
 
             $oApiRequest = new AuthNetAPI\CreateTransactionRequest();
             $oApiRequest->setMerchantAuthentication($this->getAuthentication());
