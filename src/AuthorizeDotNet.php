@@ -905,7 +905,7 @@ class AuthorizeDotNet extends PaymentBase
             $oProfile->setEmail($aData['email']);
         }
         if (array_key_exists('description', $aData)) {
-            $oProfile->setEmail($aData['description']);
+            $oProfile->setDescription($aData['description']);
         }
         if (array_key_exists('payment_profiles', $aData)) {
             $oProfile->setPaymentProfiles($aData['payment_profiles']);
