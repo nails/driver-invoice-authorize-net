@@ -183,9 +183,10 @@ class AuthorizeDotNet extends PaymentBase
             $oCharge = new AuthNetAPI\TransactionRequestType();
             $oCharge->setTransactionType('authCaptureTransaction');
 
-            // Create order information
+            //  Create order information
             $oOrder = new AuthNetAPI\OrderType();
             $oOrder->setInvoiceNumber($oInvoice->ref);
+            $oOrder->setDescription($sDescription);
 
             if (null !== $oSource) {
 
