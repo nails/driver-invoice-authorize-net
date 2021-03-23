@@ -304,9 +304,10 @@ class AuthorizeDotNet extends PaymentBase
                     );
 
                 } else {
-                    $oChargeResponse->setStatusComplete();
-                    $oChargeResponse->setTransactionId($oTransactionResponse->getTransId());
-                    $oChargeResponse->setFee($this->calculateFee($iAmount));
+                    $oChargeResponse
+                        ->setStatusComplete()
+                        ->setTransactionId($oTransactionResponse->getTransId())
+                        ->setFee($this->calculateFee($iAmount));
                 }
 
             } else {
@@ -398,6 +399,7 @@ class AuthorizeDotNet extends PaymentBase
      * @param Resource\Invoice\Data\Payment $oPaymentData   The payment data object
      * @param string                        $sReason        The refund's reason
      * @param Resource\Payment              $oPayment       The payment object
+     * @param Resource\Refund               $oRefund        The refind object
      * @param Resource\Invoice              $oInvoice       The invoice object
      *
      * @return RefundResponse
@@ -409,6 +411,7 @@ class AuthorizeDotNet extends PaymentBase
         Resource\Invoice\Data\Payment $oPaymentData,
         string $sReason,
         Resource\Payment $oPayment,
+        Resource\Refund $oRefund,
         Resource\Invoice $oInvoice
     ): RefundResponse {
 
@@ -451,8 +454,9 @@ class AuthorizeDotNet extends PaymentBase
 
             if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-                $oRefundResponse->setStatusComplete();
-                $oRefundResponse->setTransactionId($oApiResponse->getTransactionResponse()->getTransId());
+                $oRefundResponse
+                    ->setStatusComplete()
+                    ->setTransactionId($oApiResponse->getTransactionResponse()->getTransId());
                 //  @todo (Pablo - 2018-01-31) - Calculate refunded fee
                 //  $oRefundResponse->setFee($oStripeResponse->balance_transaction->fee * -1);
 
