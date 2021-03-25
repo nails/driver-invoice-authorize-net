@@ -1,6 +1,6 @@
 <?php
 
-namespace Nails\Invoice\Driver\AuthorizeDotNet\Settings;
+namespace Nails\Invoice\Driver\Payment\AuthorizeDotNet\Settings;
 
 use Nails\Common\Helper\Form;
 use Nails\Common\Interfaces;
@@ -12,7 +12,7 @@ use Nails\Factory;
 /**
  * Class AuthorizeDotNet
  *
- * @package Nails\Invoice\Driver\AuthorizeDotNet\Settings
+ * @package Nails\Invoice\Driver\Payment\AuthorizeDotNet\Settings
  */
 class AuthorizeDotNet implements Interfaces\Component\Settings
 {
@@ -81,6 +81,7 @@ class AuthorizeDotNet implements Interfaces\Component\Settings
             ->setType(Form::FIELD_DROPDOWN)
             ->setLabel('Currency')
             ->setInfo('Authorize.net accounts only support a single currency')
+            ->setClass('select2')
             ->setOptions(['' => 'Select currency...'] + $oCurrency->getAllFlat())
             ->setValidation([
                 FormValidation::RULE_REQUIRED,
@@ -163,7 +164,7 @@ class AuthorizeDotNet implements Interfaces\Component\Settings
         $oPerTransactionFee
             ->setKey(static::KEY_PER_TRANSACTION_FEE)
             ->setType(Form::FIELD_NUMBER)
-            ->setLabel('Per Transaction Fee')
+            ->setLabel('Per Transaction Fee - Fixed')
             ->setInfo('The fixed component of the fee (in the smallest unit of the currency).')
             ->setDefault(0)
             ->setFieldset('Fees');
@@ -173,7 +174,7 @@ class AuthorizeDotNet implements Interfaces\Component\Settings
         $oPerTransactionPercentage
             ->setKey(static::KEY_PER_TRANSACTION_PERCENTAGE)
             ->setType(Form::FIELD_NUMBER)
-            ->setLabel('Per Transaction Fee')
+            ->setLabel('Per Transaction Fee - Percentage')
             ->setInfo('The percentage component of the fee (0-100).')
             ->setDefault(0)
             ->setFieldset('Fees');
