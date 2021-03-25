@@ -34,7 +34,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Nails\\Invoice\\Driver\\Payment\\": "src/"
+            "Nails\\Invoice\\Driver\\Payment\\": "src/",
+            "Nails\\Invoice\\Driver\\Payment\\AuthorizeDotNet\\": "src/AuthorizeDotNet/"
         }
     },
     "extra": {
@@ -43,107 +44,10 @@
             "type": "driver",
             "subType": "payment",
             "forModule": "nails/module-invoice",
+            "namespace": "Nails\\Invoice\\Driver\\Payment\\AuthorizeDotNet\\",
             "data": {
                 "namespace": "Nails\\Invoice\\Driver\\Payment\\",
-                "class": "AuthorizeDotNet",
-                "settings": [
-                    {
-                        "key": "sLabel",
-                        "label": "Label",
-                        "info": "The name of the provider, as seen by customers.",
-                        "default": "Authorize.net"
-                    },
-                    {
-                        "key": "sStatementDescriptor",
-                        "label": "Statement Descriptor",
-                        "info": "The text shown on the customer's statement. You can sub in {{INVOICE_REF}} for the invoice reference.",
-                        "default": "INV #{{INVOICE_REF}}",
-                        "max_length": 22
-                    },
-                    {
-                        "key": "sSupportedCurrency",
-                        "label": "Currency",
-                        "info": "Authorize.net accounts only support a single currency, specify it's code here, e.g. GBP, or USD",
-                        "max_length": 3
-                    },
-                    {
-                        "legend": "API Keys - Test",
-                        "fields": [
-                            {
-                                "key": "sLoginIdTest",
-                                "label": "Log-In ID",
-                                "type": "password",
-                                "encrypted": true
-                            },
-                            {
-                                "key": "sPublicKeyTest",
-                                "label": "Public Key",
-                                "type": "password",
-                                "encrypted": true
-                            },
-                            {
-                                "key": "sTransactionKeyTest",
-                                "label": "Transaction Key",
-                                "type": "password",
-                                "encrypted": true
-                            },
-                            {
-                                "key": "sSignatureKeyTest",
-                                "label": "Signature Key",
-                                "type": "password",
-                                "encrypted": true
-                            }
-                        ]
-                    },
-                    {
-                        "legend": "API Keys - Live",
-                        "fields": [
-                            {
-                                "key": "sLoginId",
-                                "label": "Log-In ID",
-                                "type": "password",
-                                "encrypted": true
-                            },
-                            {
-                                "key": "sPublicKey",
-                                "label": "Public Key",
-                                "type": "password",
-                                "encrypted": true
-                            },
-                            {
-                                "key": "sTransactionKey",
-                                "label": "Transaction Key",
-                                "type": "password",
-                                "encrypted": true
-                            },
-                            {
-                                "key": "sSignatureKey",
-                                "label": "Signature Key",
-                                "type": "password",
-                                "encrypted": true
-                            }
-                        ]
-                    },
-                    {
-                        "legend": "Fees",
-                        "fields": [
-                            {
-                                "key": "iPerTransactionFee",
-                                "label": "Per Transaction Fee",
-                                "type": "number",
-                                "default": 0,
-                                "info": "The fixed component of the fee (in the smallest unit of the currency)"
-                            },
-                            {
-                                "key": "fPerTransactionPercentage",
-                                "label": "Per Transaction Fee",
-                                "type": "number",
-                                "default": 0,
-                                "info": "The percentage component of the fee (0-100)"
-                            }
-                        ]
-                    }
-                ]
+                "class": "AuthorizeDotNet"
             }
         }
     }
