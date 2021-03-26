@@ -45,6 +45,16 @@ class AuthorizeDotNet implements Interfaces\Component\Settings
     /**
      * @inheritDoc
      */
+    public function getPermissions(): array
+    {
+        return [];
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
     public function get(): array
     {
         /** @var Currency\Service\Currency $oCurrency */
