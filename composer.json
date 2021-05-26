@@ -27,7 +27,7 @@
     "prefer-stable": true,
     "require": {
         "nails/module-invoice": "dev-develop",
-        "authorizenet/authorizenet": "~1.9"
+        "authorizenet/authorizenet": "~2.0"
     },
     "require-dev": {
         "phpunit/phpunit": "9.*"
