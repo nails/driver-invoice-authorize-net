@@ -35,8 +35,12 @@
     "autoload": {
         "psr-4": {
             "Nails\\Invoice\\Driver\\Payment\\": "src/",
-            "Nails\\Invoice\\Driver\\Payment\\AuthorizeDotNet\\": "src/AuthorizeDotNet/"
+            "Nails\\Invoice\\Driver\\Payment\\AuthorizeDotNet\\": "src/AuthorizeDotNet/",
+            "Tests\\Invoice\\Driver\\Payment\\AuthorizeDotNet\\": "tests/"
         }
+    },
+    "scripts": {
+        "test": "./vendor/bin/phpunit"
     },
     "extra": {
         "nails": {
