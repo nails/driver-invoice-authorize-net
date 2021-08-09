@@ -12,6 +12,8 @@
 
 namespace Nails\Invoice\Driver\Payment;
 
+use Nails\Common\Helper\ArrayHelper;
+use Nails\Common\Helper\Strings;
 use Nails\Currency\Resource\Currency;
 use Nails\Environment;
 use Nails\Factory;
@@ -57,6 +59,7 @@ class AuthorizeDotNet extends PaymentBase
      * when attempting to pay an invoice in a supported currency
      *
      * @return string[]|null
+     * @throws \Nails\Common\Exception\FactoryException
      */
     public function getSupportedCurrencies(): ?array
     {
@@ -193,8 +196,8 @@ class AuthorizeDotNet extends PaymentBase
                 /**
                  * The customer is checking out using a saved payment source
                  */
-                $iPaymentProfileId  = getFromArray('payment_profile_id', (array) $oSource->data);
-                $iCustomerProfileId = getFromArray('customer_profile_id', (array) $oSource->data);
+                $iPaymentProfileId  = ArrayHelper::get('payment_profile_id', (array) $oSource->data);
+                $iCustomerProfileId = ArrayHelper::get('customer_profile_id', (array) $oSource->data);
 
                 if (empty($iPaymentProfileId)) {
                     throw new DriverException('Could not ascertain the "source_id" from the Source object.');
@@ -358,10 +361,11 @@ class AuthorizeDotNet extends PaymentBase
      * @param string                    $sSuccessUrl  The URL to redirect to after authorisation
      *
      * @return ScaResponse
+     * @throws DriverException
      */
     public function sca(ScaResponse $oScaResponse, Resource\Payment\Data\Sca $oData, string $sSuccessUrl): ScaResponse
     {
-        //  SCA is not supported... yet
+        throw new DriverException('SCA is not supported');
     }
 
     // --------------------------------------------------------------------------
@@ -663,7 +667,7 @@ class AuthorizeDotNet extends PaymentBase
     /**
      * Creates a new payment source on the gateway, semi-populates the source resource with data
      *
-     * @param Resource\Source $oResource The Resouce object to update
+     * @param Resource\Source $oResource The Resource object to update
      * @param array           $aData     Data passed from the caller
      *
      * @throws DriverException
@@ -674,13 +678,13 @@ class AuthorizeDotNet extends PaymentBase
     ): void {
 
         //  Required values
-        $sCustomerProfileId = getFromArray('customer_profile_id', $aData);
-        $sDataDescriptor    = getFromArray('data_descriptor', $aData);
-        $sDataValue         = getFromArray('data_value', $aData);
-        $sBrand             = trim(getFromArray('brand', $aData));
-        $sLastFour          = getFromArray('last_four', $aData);
-        $sExpiry            = getFromArray('expiry', $aData);
-        $sName              = trim(getFromArray('name', $aData));
+        $sCustomerProfileId = ArrayHelper::get('customer_profile_id', $aData);
+        $sDataDescriptor    = ArrayHelper::get('data_descriptor', $aData);
+        $sDataValue         = ArrayHelper::get('data_value', $aData);
+        $sBrand             = trim(ArrayHelper::get('brand', $aData));
+        $sLastFour          = ArrayHelper::get('last_four', $aData);
+        $sExpiry            = ArrayHelper::get('expiry', $aData);
+        $sName              = trim(ArrayHelper::get('name', $aData));
 
         $aErrors = [];
         if (empty($sCustomerProfileId)) {
@@ -707,7 +711,7 @@ class AuthorizeDotNet extends PaymentBase
 
         if (!empty($aErrors)) {
             $sError = '"' . implode('", "', $aErrors) . '""';
-            $sError = replaceLastOccurrence(',', ' and', $sError);
+            $sError = Strings::replaceLastOccurrence(',', ' and', $sError);
 
             throw new DriverException(
                 $sError . ' must be supplied when creating an Authorize.NET payment source.'
