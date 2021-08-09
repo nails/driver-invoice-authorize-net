@@ -714,7 +714,7 @@ class AuthorizeDotNet extends PaymentBase
             );
         }
 
-        list($sTitle, $sFirstName, $sLastName) = $this->getNameParts($sName);
+        [$sTitle, $sFirstName, $sLastName] = AuthorizeDotNet\Helper\Name::getParts($sName);
 
         $oPaymentData = new AuthNetAPI\OpaqueDataType();
         $oPaymentData->setDataDescriptor($sDataDescriptor);
@@ -792,7 +792,7 @@ class AuthorizeDotNet extends PaymentBase
 
         if ($oApiResponse->getMessages()->getResultCode() === Constants::API_RESPONSE_OK) {
 
-            list($sTitle, $sFirstName, $sLastName) = $this->getNameParts($oResource->name);
+            [$sTitle, $sFirstName, $sLastName] = AuthorizeDotNet\Helper\Name::getParts($oResource->name);
 
             //  We have the existing card, submit an update request
             $oBillTo = $oApiResponse->getPaymentProfile()->getBillTo();
@@ -1039,40 +1039,5 @@ class AuthorizeDotNet extends PaymentBase
             $oGeneralError  = reset($aGeneralErrors);
             throw new DriverException($oGeneralError->getCode() . ': ' . $oGeneralError->getText());
         }
-    }
-
-    // --------------------------------------------------------------------------
-
-    /**
-     * Attempts to dissect a name into it's distinct parts
-     *
-     * @param $sName The name to dissect
-     *
-     * @return array
-     */
-    protected function getNameParts($sName)
-    {
-        if (preg_match('/^((m(r|s|rs|x|iss))|dr|master|sir|lady|madam|dame|lord|esq) /i', $sName)) {
-
-            list($sTitle, $sFirstName, $sLastName) = array_pad(explode(' ', $sName, 3), 3, null);
-
-            if (empty($sLastNfame)) {
-                //  This supports "Mrs Test" type scenarios
-                $sLastName  = $sFirstName;
-                $sFirstName = $sTitle;
-            } else {
-                $sFirstName = trim($sTitle . ' ' . $sFirstName);
-            }
-
-        } else {
-            $sTitle = null;
-            list($sFirstName, $sLastName) = array_pad(explode(' ', $sName, 2), 2, null);
-        }
-
-        return [
-            $sTitle,
-            $sFirstName,
-            $sLastName,
-        ];
     }
 }
