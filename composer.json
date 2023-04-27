@@ -26,7 +26,7 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "nails/module-invoice": "dev-develop",
+        "nails/module-invoice": "dev-feature/pre-new-admin",
         "authorizenet/authorizenet": "~2.0"
     },
     "require-dev": {
