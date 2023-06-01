@@ -619,7 +619,7 @@ class AuthorizeDotNet extends PaymentBase
     {
         $iFixedFee      = (int) $this->getSetting('iPerTransactionFee');
         $fPercentageFee = (float) $this->getSetting('iPerTransactionPercentage');
-        return $iFixedFee + ($fPercentageFee / 100) * $iAmount;
+        return intval($iFixedFee + ($fPercentageFee / 100) * $iAmount);
     }
 
     // --------------------------------------------------------------------------
