@@ -174,7 +174,7 @@ class AuthorizeDotNet extends PaymentBase
         string $sSuccessUrl,
         string $sErrorUrl,
         bool $bCustomerPresent,
-        Resource\Source $oSource = null
+        ?Resource\Source $oSource = null
     ): ChargeResponse {
 
         /** @var ChargeResponse $oChargeResponse */
@@ -531,7 +531,7 @@ class AuthorizeDotNet extends PaymentBase
      *
      * @return mixed
      */
-    protected function getEnvSetting(string $sProperty = null)
+    protected function getEnvSetting(?string $sProperty = null)
     {
         if (Environment::is(Environment::ENV_PROD)) {
             return parent::getSetting($sProperty);
