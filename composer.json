@@ -26,6 +26,7 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
+        "php": ">=8.3",
         "nails/module-invoice": "dev-develop",
         "authorizenet/authorizenet": "~2.0"
     },
