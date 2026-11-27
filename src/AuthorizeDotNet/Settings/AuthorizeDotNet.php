@@ -2,6 +2,7 @@
 
 namespace Nails\Invoice\Driver\Payment\AuthorizeDotNet\Settings;
 
+use Nails\Invoice\Driver\Payment\AuthorizeDotNet\Admin\Permission;
 use Nails\Common\Helper\Form;
 use Nails\Common\Interfaces;
 use Nails\Common\Service\FormValidation;
@@ -45,9 +46,9 @@ class AuthorizeDotNet implements Interfaces\Component\Settings
     /**
      * @inheritDoc
      */
-    public function getPermissions(): array
+    public function getPermission(): string
     {
-        return [];
+        return Permission\Settings\AuthorizeDotNet::class;
     }
 
     // --------------------------------------------------------------------------
